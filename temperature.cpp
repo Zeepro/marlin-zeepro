@@ -325,11 +325,11 @@ int getHeaterPower(int heater) {
 
 void CheckTemperatureToActivateFan()
 {
-	if ((degHotend(0)> 45 ) || (degHotend(1)> 45 ))
+	if ((degHotend(0)> 70 ) || (degHotend(1)> 70 ))
 	{
 		digitalWrite(FAN_v2, HIGH);
 	}
-	if ((degHotend(0)< 40 ) && (degHotend(1)< 40 ))
+	if ((degHotend(0)< 65 ) && (degHotend(1)< 65 ))
 	{
 		digitalWrite(FAN_v2, LOW);
 	}
@@ -848,7 +848,7 @@ void tp_init()
   
   
   
-  // Je rajoute mon pin de l'atmel car d'après la datasheet : pour diminuer la consommation de l'énergie
+  // Je rajoute mon pin de l'atmel car d'aprï¿½s la datasheet : pour diminuer la consommation de l'ï¿½nergie
   
     #if (ATMEL_IN_PUSH > -1)
     #if ATMEL_IN_PUSH < 8
@@ -1288,7 +1288,7 @@ ISR(TIMER0_COMPB_vect)
   }
     
   if(temp_count >= 16) // 8 ms * 16 = 128ms.
-//if(temp_count >= 20) // 8 ms * 20 = 160ms. // à revoir cette partie
+//if(temp_count >= 20) // 8 ms * 20 = 160ms. // ï¿½ revoir cette partie
   {
     if (!temp_meas_ready) //Only update the raw values if they have been read. Else we could be updating them during reading.
     {

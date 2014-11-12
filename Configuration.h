@@ -228,7 +228,7 @@
   #define ENDSTOPPULLUP_XMIN
   #define ENDSTOPPULLUP_YMIN
   #define ENDSTOPPULLUP_ZMIN
-    /// ici j'ai ajouté/////
+    /// ici j'ai ajoutï¿½/////
   #define ENDSTOPPULLUP_PRIVATE_ENDSTOPS1
   #define ENDSTOPPULLUP_PRIVATE_ENDSTOPS2
   #define ENDSTOPPULLUP_Endstop_voyage
@@ -244,7 +244,7 @@
   #define ENDSTOPPULLUP_XMIN
   #define ENDSTOPPULLUP_YMIN
   #define ENDSTOPPULLUP_ZMIN
-      /// ici j'ai ajouté/////
+      /// ici j'ai ajoutï¿½/////
  #define ENDSTOPPULLUP_PRIVATE_ENDSTOPS1
  #define ENDSTOPPULLUP_PRIVATE_ENDSTOPS2
  #define ENDSTOPPULLUP_Endstop_voyage
@@ -280,7 +280,7 @@
 
 
 
-// Fonction Pour le mouvement du carré
+// Fonction Pour le mouvement du carrï¿½
 #define Fonction_Carre_Define
 
 
@@ -305,7 +305,7 @@
 // PNI 20140921 make it no sense now
 //#define TEST
 
-//Loading Unloading
+//Loading
 //FC 20140718 Guides length are different
 // Jean-Marc 20140807
 // cut again 50mm for two guides, adjust length by test
@@ -313,20 +313,23 @@
 // lower the distance of unloading after endstop from 20 to 2mm
 // increase the speed of retraction and compensation of retraction from 100 to 200mm/s
 // FC 20140820 Reduce the speed of loading and unloading
-//PNI 20140921 reduce 20mm according to Florent + Eric
+// PNI 20140921 reduce 20mm according to Florent + Eric
+
 const float Distance_Loading_left=1440; //mm
 const float Distance_Loading_right=1240; //mm
 const float feedrate_Loading=1000; //mm/mn
 const float Distance_Critical_Loading=50; //mm
 const float feedrate_Critical_Loading=500; //mm/mn
-const float feedrate_Extrude_Retract=200; //mm/mn
+const float feedrate_Extrude_Retract=1800; //mm/mn
 
-const float feedrate_Critical_Unloading=1000; //mm/mn
+//Unloading
 
-const float Distance_critical_Unloading=0.1;//mm
-const float Distance_Unloading=3000; //mm 
-
-
+const float Unloading_part1_length = 100; // mm
+const float Unloading_part1_feedrate = 2000; // mm/min
+const float Unloading_part1_feedrate_PVA = 500; // mm/min
+const float Unloading_part2_length = 3000; // mm (never reached - stopped either by endstop or by timeout)
+const float Unloading_part2_feedrate = 1000; // mm/min
+const float Unloading_part2_feedrate_PVA = 500; // mm/min
 
 // The pullups are needed if you directly connect a mechanical endswitch between the signal and ground pins.
 const bool X_ENDSTOPS_INVERTING = false; // set to true to invert the logic of the endstops. 
@@ -397,11 +400,11 @@ const bool Carre_ENDSTOPS_INVERTING = false; // set to true to invert the logic 
 	/*
 	
 	
-	Pour les axis steps, avec tes poulies 15 dents, le calcul est simple à faire
+	Pour les axis steps, avec tes poulies 15 dents, le calcul est simple ï¿½ faire
 
-15 dents x 2mm (poulies GT2) = 30 mm de circonférence
+15 dents x 2mm (poulies GT2) = 30 mm de circonfï¿½rence
 
-1 tour = 32 micro pas x 200 pas (1,8° d'angle) = 6400 micro pas
+1 tour = 32 micro pas x 200 pas (1,8ï¿½ d'angle) = 6400 micro pas
 
 axis steps = nombre de micro pas pour faire un mm = 6400/30 = 213	
 	
