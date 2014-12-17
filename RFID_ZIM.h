@@ -298,10 +298,10 @@ void envoie_commande(byte commande[], byte taille, byte numero )
 
 		}
 
-		if (numero= 2) 
+		if (numero == 2) 
 			MYSERIAL2.flush(); 
 
-		if (numero=3) 
+		if (numero == 3) 
 			MYSERIAL3.flush(); 
 }
 

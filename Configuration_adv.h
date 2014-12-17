@@ -167,7 +167,8 @@
 #define INVERT_E_STEP_PIN false
 
 //default stepper release if idle
-#define DEFAULT_STEPPER_DEACTIVE_TIME 600
+#define DEFAULT_STEPPER_DEACTIVE_TIME 300
+#define DEFAULT_EXTRUDER_DEACTIVE_TIME 60
 
 //default Pushing time to stop the Machine "in Second"
 #define MAX_TIME_PUSHING 2

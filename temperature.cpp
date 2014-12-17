@@ -325,18 +325,15 @@ int getHeaterPower(int heater) {
 
 void CheckTemperatureToActivateFan()
 {
-	if ((degHotend(0)> 70 ) || (degHotend(1)> 70 ))
+	if ((degHotend(0)> 60 ) || (degHotend(1)> 60 ))
 	{
 		digitalWrite(FAN_v2, HIGH);
 	}
-	if ((degHotend(0)< 65 ) && (degHotend(1)< 65 ))
+	if ((degHotend(0)< 55 ) && (degHotend(1)< 55 ))
 	{
 		digitalWrite(FAN_v2, LOW);
 	}
 }
-
-
-
 
 void manage_heater()
 {
@@ -349,11 +346,7 @@ void manage_heater()
     return; 
 
   updateTemperaturesFromRawValues();
-
-
-
-
-
+  
   for(int e = 0; e < EXTRUDERS; e++) 
   {
 	  

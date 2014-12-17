@@ -206,7 +206,7 @@
 //if PREVENT_DANGEROUS_EXTRUDE is on, you can still disable (uncomment) very long bits of extrusion separately.
 //#define PREVENT_LENGTHY_EXTRUDE
 
-#define EXTRUDE_MINTEMP 165
+#define EXTRUDE_MINTEMP 155
 #define EXTRUDE_MAXLENGTH (X_MAX_LENGTH+Y_MAX_LENGTH) //prevent extrusion of very large distances.
 
 //===========================================================================
@@ -327,9 +327,13 @@ const float feedrate_Extrude_Retract=1800; //mm/mn
 const float Unloading_part1_length = 100; // mm
 const float Unloading_part1_feedrate = 2000; // mm/min
 const float Unloading_part1_feedrate_PVA = 500; // mm/min
-const float Unloading_part2_length = 3000; // mm (never reached - stopped either by endstop or by timeout)
+const float Unloading_part2_length_left = 1330; // mm (never reached - stopped either by endstop or by timeout)
+const float Unloading_part2_length_right = 1130; // mm (never reached - stopped either by endstop or by timeout)
 const float Unloading_part2_feedrate = 1000; // mm/min
 const float Unloading_part2_feedrate_PVA = 500; // mm/min
+const float Unloading_part3_length = 500; // mm (never reached - stopped either by endstop or by timeout)
+const float Unloading_part3_feedrate = 1000; // mm/min
+const float Unloading_part3_feedrate_PVA = 500; // mm/min
 
 // The pullups are needed if you directly connect a mechanical endswitch between the signal and ground pins.
 const bool X_ENDSTOPS_INVERTING = false; // set to true to invert the logic of the endstops. 
