@@ -318,9 +318,12 @@
 const float Distance_Loading_left=1440; //mm
 const float Distance_Loading_right=1240; //mm
 const float feedrate_Loading=1000; //mm/mn
+const float feedrate_Loading_PVA=500; //mm/mn
 const float Distance_Critical_Loading=50; //mm
 const float feedrate_Critical_Loading=500; //mm/mn
-const float feedrate_Extrude_Retract=1800; //mm/mn
+const float feedrate_Critical_Loading_PVA=100; //mm/mn
+const float feedrate_Extrude_Retract=1000; //mm/mn
+const float feedrate_Extrude_PVA=50; //mm/mn, attention, this value doesn't cover PVA auto retract speed after print and charge speed in resume
 
 //Unloading
 
@@ -334,6 +337,8 @@ const float Unloading_part2_feedrate_PVA = 500; // mm/min
 const float Unloading_part3_length = 500; // mm (never reached - stopped either by endstop or by timeout)
 const float Unloading_part3_feedrate = 1000; // mm/min
 const float Unloading_part3_feedrate_PVA = 500; // mm/min
+
+#define CODE_PVA_IN_LOADING_UNLOADING 'P'
 
 // The pullups are needed if you directly connect a mechanical endswitch between the signal and ground pins.
 const bool X_ENDSTOPS_INVERTING = false; // set to true to invert the logic of the endstops. 

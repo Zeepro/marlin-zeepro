@@ -48,7 +48,7 @@ http://reprap.org/pipermail/reprap-dev/2011-May/003323.html
 #include <SPI.h>
 #endif
 
-#define VERSION_STRING  "1.1.0.5"
+#define VERSION_STRING  "1.1.0.8"
 
 //Stepper Movement Variables
 
@@ -85,7 +85,7 @@ float extruders_offset_changement[2]={0,0};
 uint8_t active_extruder = 0;
 bool unloading_critical_state = false;
 bool unloading_command = false;
-bool Commande_cartridge = false;
+//bool Commande_cartridge = false;
 int fanSpeed=0;
 
 #ifdef FWRETRACT
@@ -3567,13 +3567,19 @@ void process_commands()
 				break;
 			}
 		case 1604: 
-			{// loading Right RFID
-
-
+			{ // loading right cartridge
 				uint8_t sauvegarde_extruder = active_extruder;
-				active_extruder=0; 		
+				float fr_critical = feedrate_Critical_Loading;
+				float fr_default = feedrate_Loading;
+				
+				if (code_seen(CODE_PVA_IN_LOADING_UNLOADING)) {
+					fr_critical = feedrate_Critical_Loading_PVA;
+					fr_default = feedrate_Loading_PVA;
+				}
+				
+				active_extruder=0;
 				allow_cold_extrudes(true);
-				Commande_cartridge=true;
+				//Commande_cartridge=true;
 				relative_mode = true;
 
 				//First mouvement
@@ -3581,43 +3587,40 @@ void process_commands()
 				destination[0] = current_position[0];
 				destination[1] = current_position[1];
 				destination[2] = current_position[2];
-				feedrate = feedrate_Critical_Loading;
+				feedrate = fr_critical;
 				prepare_move();
-
-
 
 				// Second mouvement
 				destination[3] =  Distance_Loading_right + (axis_relative_modes[3] || relative_mode)*current_position[3];
 				destination[0] = current_position[0];
 				destination[1] = current_position[1];
 				destination[2] = current_position[2];
-				feedrate = feedrate_Loading;
+				feedrate = fr_default;
 				prepare_move();
-
 
 				//Réinitilisation
 				Distance_Filament_E0 = 0;
 
-
-
 				active_extruder=sauvegarde_extruder;
 				relative_mode = false;
-
-
-
 
 				break;
 			}
 
 		case 1605: 
-			{
-
-				// loading Left  RFID
-
+			{ // loading left cartridge
 				uint8_t sauvegarde_extruder = active_extruder;
-				active_extruder=1; 		
+				float fr_critical = feedrate_Critical_Loading;
+				float fr_default = feedrate_Loading;
+				
+				if (code_seen(CODE_PVA_IN_LOADING_UNLOADING)) {
+					fr_critical = feedrate_Critical_Loading_PVA;
+					fr_default = feedrate_Loading_PVA;
+				}
+				
+				active_extruder=1;
 				allow_cold_extrudes(true);
-				Commande_cartridge=true;
+				//Commande_cartridge=true;
 				relative_mode = true;
 
 				//First mouvement
@@ -3625,40 +3628,38 @@ void process_commands()
 				destination[0] = current_position[0];
 				destination[1] = current_position[1];
 				destination[2] = current_position[2];
-				feedrate = feedrate_Critical_Loading;
+				feedrate = fr_critical;
 				prepare_move();
-
-
 
 				// Second mouvement
 				destination[3] =  Distance_Loading_left + (axis_relative_modes[3] || relative_mode)*current_position[3];
 				destination[0] = current_position[0];
 				destination[1] = current_position[1];
 				destination[2] = current_position[2];
-				feedrate = feedrate_Loading;
+				feedrate = fr_default;
 				prepare_move();
-
 
 				//Réinitilisation
 				Distance_Filament_E1 = 0;
 
-
 				active_extruder=sauvegarde_extruder;
 				relative_mode = false;
-
-
-
 
 				break;
 			}
 
 		case 1606: 
-			{
-				//Unloading RIGHT
-
-				//if ((READ(PRIVATE_ENDSTOPS1)^E_ENDSTOPS_INVERTING) == false) {
-				//	break; // block unloading if no filament
-				//}
+			{ // unloading right cartridge
+				uint8_t orignal_extruder = active_extruder;
+				float fr_p1 = Unloading_part1_feedrate;
+				float fr_p2 = Unloading_part2_feedrate;
+				float fr_p3 = Unloading_part3_feedrate;
+				
+				if (code_seen(CODE_PVA_IN_LOADING_UNLOADING)) {
+					fr_p1 = Unloading_part1_feedrate_PVA;
+					fr_p2 = Unloading_part2_feedrate_PVA;
+					fr_p3 = Unloading_part3_feedrate_PVA;
+				}
 
 				active_extruder=0;
 				allow_cold_extrudes(true);
@@ -3669,39 +3670,41 @@ void process_commands()
 				destination[0] = current_position[0];
 				destination[1] = current_position[1];
 				destination[2] = current_position[2];
-				feedrate = Unloading_part1_feedrate;
+				feedrate = fr_p1;
 				prepare_move();
-
-				Message_wait();
 
 				destination[3] = -Unloading_part2_length_right + (axis_relative_modes[3] || relative_mode)*current_position[3];
 				destination[0] = current_position[0];
 				destination[1] = current_position[1];
 				destination[2] = current_position[2];
-				feedrate = Unloading_part2_feedrate;
+				feedrate = fr_p2;
 				prepare_move();
-
-				Message_wait();
 
 				destination[3] = -Unloading_part3_length + (axis_relative_modes[3] || relative_mode)*current_position[3];
 				destination[0] = current_position[0];
 				destination[1] = current_position[1];
 				destination[2] = current_position[2];
-				feedrate = Unloading_part3_feedrate;
+				feedrate = fr_p3;
 				prepare_move();
 
 				relative_mode = false;
+				active_extruder = orignal_extruder;
 
 				break;
 			}
 
 		case 1607: 
-			{ 
-				//Unloading LEFT
-
-				//if ((READ(PRIVATE_ENDSTOPS2)^E_ENDSTOPS_INVERTING) == false) {
-				//	break; // block unloading if no filament
-				//}
+			{ // unloading left cartridge
+				uint8_t orignal_extruder = active_extruder;
+				float fr_p1 = Unloading_part1_feedrate;
+				float fr_p2 = Unloading_part2_feedrate;
+				float fr_p3 = Unloading_part3_feedrate;
+				
+				if (code_seen(CODE_PVA_IN_LOADING_UNLOADING)) {
+					fr_p1 = Unloading_part1_feedrate_PVA;
+					fr_p2 = Unloading_part2_feedrate_PVA;
+					fr_p3 = Unloading_part3_feedrate_PVA;
+				}
 
 				active_extruder=1;
 				allow_cold_extrudes(true);
@@ -3712,28 +3715,25 @@ void process_commands()
 				destination[0] = current_position[0];
 				destination[1] = current_position[1];
 				destination[2] = current_position[2]; 
-				feedrate = Unloading_part1_feedrate;
+				feedrate = fr_p1;
 				prepare_move();
-
-				Message_wait();
 
 				destination[3] = -Unloading_part2_length_left + (axis_relative_modes[3] || relative_mode)*current_position[3];
 				destination[0] = current_position[0];
 				destination[1] = current_position[1];
 				destination[2] = current_position[2]; 
-				feedrate = Unloading_part2_feedrate;  
+				feedrate = fr_p2;
 				prepare_move();
-
-				Message_wait();
 
 				destination[3] = -Unloading_part3_length + (axis_relative_modes[3] || relative_mode)*current_position[3];
 				destination[0] = current_position[0];
 				destination[1] = current_position[1];
 				destination[2] = current_position[2]; 
-				feedrate = Unloading_part3_feedrate;  
+				feedrate = fr_p3;
 				prepare_move();
 
 				relative_mode = false;
+				active_extruder = orignal_extruder;
 
 				break;
 			}
@@ -3917,7 +3917,7 @@ void process_commands()
 				uint8_t sauvegarde_extruder = active_extruder;
 				active_extruder=0; 		
 				allow_cold_extrudes(true);
-				Commande_cartridge=true;
+				//Commande_cartridge=true;
 				relative_mode = true;
 
 				destination[3] =  Distance_Critical_Loading + (axis_relative_modes[3] || relative_mode)*current_position[3];
@@ -3965,7 +3965,7 @@ void process_commands()
 				uint8_t sauvegarde_extruder = active_extruder;
 				active_extruder=1; 		
 				allow_cold_extrudes(true);
-				Commande_cartridge=true;
+				//Commande_cartridge=true;
 				relative_mode = true;
 
 				destination[3] =  Distance_Critical_Loading + (axis_relative_modes[3] || relative_mode)*current_position[3];
@@ -4194,45 +4194,45 @@ void process_commands()
 		//	}
 
 
-		case 1626: 
-			{
-				//Unloading RIGHT PVA
-
-				active_extruder=0;
-				allow_cold_extrudes(true);
-				relative_mode = true;
-
-				destination[3] = -Unloading_part1_length + (axis_relative_modes[3] || relative_mode)*current_position[3];
-				destination[0] = current_position[0];
-				destination[1] = current_position[1];
-				destination[2] = current_position[2];
-				feedrate = Unloading_part1_feedrate_PVA;
-				prepare_move();
-
-				Message_wait();
-
-				destination[3] = -Unloading_part2_length_right + (axis_relative_modes[3] || relative_mode)*current_position[3];
-				destination[0] = current_position[0];
-				destination[1] = current_position[1];
-				destination[2] = current_position[2];
-				feedrate = Unloading_part2_feedrate_PVA;
-				prepare_move();
-
-				Message_wait();
-
-				unloading_command = true;
-
-				destination[3] = -Unloading_part3_length + (axis_relative_modes[3] || relative_mode)*current_position[3];
-				destination[0] = current_position[0];
-				destination[1] = current_position[1];
-				destination[2] = current_position[2];
-				feedrate = Unloading_part3_feedrate_PVA;
-				prepare_move();
-
-				relative_mode = false;
-
-				break;
-			}
+//		case 1626: 
+//			{
+//				//Unloading RIGHT PVA
+//
+//				active_extruder=0;
+//				allow_cold_extrudes(true);
+//				relative_mode = true;
+//
+//				destination[3] = -Unloading_part1_length + (axis_relative_modes[3] || relative_mode)*current_position[3];
+//				destination[0] = current_position[0];
+//				destination[1] = current_position[1];
+//				destination[2] = current_position[2];
+//				feedrate = Unloading_part1_feedrate_PVA;
+//				prepare_move();
+//
+//				Message_wait();
+//
+//				destination[3] = -Unloading_part2_length_right + (axis_relative_modes[3] || relative_mode)*current_position[3];
+//				destination[0] = current_position[0];
+//				destination[1] = current_position[1];
+//				destination[2] = current_position[2];
+//				feedrate = Unloading_part2_feedrate_PVA;
+//				prepare_move();
+//
+//				Message_wait();
+//
+//				unloading_command = true;
+//
+//				destination[3] = -Unloading_part3_length + (axis_relative_modes[3] || relative_mode)*current_position[3];
+//				destination[0] = current_position[0];
+//				destination[1] = current_position[1];
+//				destination[2] = current_position[2];
+//				feedrate = Unloading_part3_feedrate_PVA;
+//				prepare_move();
+//
+//				relative_mode = false;
+//
+//				break;
+//			}
 
 		//case 1626:
 		//	{
@@ -4285,132 +4285,152 @@ void process_commands()
 
 		//	}	
 
-		case 1627: 
-			{ 
-				//Unloading LEFT PVA
-
-				//if ((READ(PRIVATE_ENDSTOPS2)^E_ENDSTOPS_INVERTING) == false) {
-				//	break; // block unloading if no filament
-				//}
-
-				active_extruder=1;
-				allow_cold_extrudes(true);
-				relative_mode = true;
-
-				destination[3] = -Unloading_part1_length + (axis_relative_modes[3] || relative_mode)*current_position[3];
-				destination[0] = current_position[0];
-				destination[1] = current_position[1];
-				destination[2] = current_position[2]; 
-				feedrate = Unloading_part1_feedrate_PVA;
-				prepare_move();
-
-				Message_wait();
-
-				destination[3] = -Unloading_part2_length_left + (axis_relative_modes[3] || relative_mode)*current_position[3];
-				destination[0] = current_position[0];
-				destination[1] = current_position[1];
-				destination[2] = current_position[2]; 
-				feedrate = Unloading_part2_feedrate_PVA;  
-				prepare_move();
-
-				Message_wait();
-
-				unloading_command = true;
-
-				destination[3] = -Unloading_part3_length + (axis_relative_modes[3] || relative_mode)*current_position[3];
-				destination[0] = current_position[0];
-				destination[1] = current_position[1];
-				destination[2] = current_position[2]; 
-				feedrate = Unloading_part3_feedrate_PVA;  
-				prepare_move();
-
-				relative_mode = false;
-
-				break;
-			}
+//		case 1627: 
+//			{ 
+//				//Unloading LEFT PVA
+//
+//				//if ((READ(PRIVATE_ENDSTOPS2)^E_ENDSTOPS_INVERTING) == false) {
+//				//	break; // block unloading if no filament
+//				//}
+//
+//				active_extruder=1;
+//				allow_cold_extrudes(true);
+//				relative_mode = true;
+//
+//				destination[3] = -Unloading_part1_length + (axis_relative_modes[3] || relative_mode)*current_position[3];
+//				destination[0] = current_position[0];
+//				destination[1] = current_position[1];
+//				destination[2] = current_position[2]; 
+//				feedrate = Unloading_part1_feedrate_PVA;
+//				prepare_move();
+//
+//				Message_wait();
+//
+//				destination[3] = -Unloading_part2_length_left + (axis_relative_modes[3] || relative_mode)*current_position[3];
+//				destination[0] = current_position[0];
+//				destination[1] = current_position[1];
+//				destination[2] = current_position[2]; 
+//				feedrate = Unloading_part2_feedrate_PVA;  
+//				prepare_move();
+//
+//				Message_wait();
+//
+//				unloading_command = true;
+//
+//				destination[3] = -Unloading_part3_length + (axis_relative_modes[3] || relative_mode)*current_position[3];
+//				destination[0] = current_position[0];
+//				destination[1] = current_position[1];
+//				destination[2] = current_position[2]; 
+//				feedrate = Unloading_part3_feedrate_PVA;  
+//				prepare_move();
+//
+//				relative_mode = false;
+//
+//				break;
+//			}
 
 
 		case 1650: 
 			{// Extruding 20mm for the first extruder
 				float Distance_Load=4;
 				uint8_t sauvegarde_extruder = active_extruder;
-				active_extruder=0; 		
+				float fr_charge = feedrate_Extrude_Retract;
+				
+				active_extruder=0;
 				relative_mode = true;
+				if(code_seen(CODE_PVA_IN_LOADING_UNLOADING)) {
+					fr_charge = feedrate_Extrude_PVA;
+				}
 
 				destination[3] =  Distance_Load + (axis_relative_modes[3] || relative_mode)*current_position[3];
 				destination[0] = current_position[0];
 				destination[1] = current_position[1];
 				destination[2] = current_position[2];
-				feedrate = feedrate_Extrude_Retract; 
-				prepare_move(); 					
+				feedrate = fr_charge; 
+				prepare_move();
 
 				active_extruder=sauvegarde_extruder;
 				relative_mode = false;
 
 				break;
-			}			
+			}
 
 
 		case 1651: 
 			{// Extruding 20mm for the second extruder
 				float Distance_Load=4;
 				uint8_t sauvegarde_extruder = active_extruder;
-				active_extruder=1; 		
+				float fr_charge = feedrate_Extrude_Retract;
+				
+				active_extruder=1;
 				relative_mode = true;
+				if(code_seen(CODE_PVA_IN_LOADING_UNLOADING)) {
+					fr_charge = feedrate_Extrude_PVA;
+				}
 
 				destination[3] =  Distance_Load + (axis_relative_modes[3] || relative_mode)*current_position[3];
 				destination[0] = current_position[0];
 				destination[1] = current_position[1];
 				destination[2] = current_position[2];
-				feedrate = feedrate_Extrude_Retract; 
-				prepare_move(); 					
+				feedrate = fr_charge;
+				prepare_move();
 
 				active_extruder=sauvegarde_extruder;
 				relative_mode = false;
 
 				break;
-			}	
+			}
 
 
 		case 1652: 
-			{// Reversing 20mm for the first extruder
+			{// Reversing 20mm for the first extruder, not in use in real
 				float Distance_Load=4;
 				uint8_t sauvegarde_extruder = active_extruder;
-				active_extruder=0; 		
+				float fr_retract = feedrate_Extrude_Retract;
+				
+				active_extruder=0;
 				relative_mode = true;
+				if(code_seen(CODE_PVA_IN_LOADING_UNLOADING)) {
+					fr_retract = feedrate_Extrude_PVA;
+				}
 
 				destination[3] = - Distance_Load + (axis_relative_modes[3] || relative_mode)*current_position[3];
 				destination[0] = current_position[0];
 				destination[1] = current_position[1];
 				destination[2] = current_position[2];
-				feedrate = feedrate_Extrude_Retract;
+				feedrate = fr_retract;
 				prepare_move();
 
 				active_extruder=sauvegarde_extruder;
 				relative_mode = false;
 
 				break;
-			}	
+			}
 
 		case 1653: 
-			{// Reversing 20mm for the second extruder
+			{// Reversing 20mm for the second extruder, not in use in real
 				float Distance_Load=4;
 				uint8_t sauvegarde_extruder = active_extruder;
-				active_extruder=1; 		
+				float fr_retract = feedrate_Extrude_Retract;
+				
+				active_extruder=1;
 				relative_mode = true;
+				if(code_seen(CODE_PVA_IN_LOADING_UNLOADING)) {
+					fr_retract = feedrate_Extrude_PVA;
+				}
 
 				destination[3] = - Distance_Load + (axis_relative_modes[3] || relative_mode)*current_position[3];
 				destination[0] = current_position[0];
 				destination[1] = current_position[1];
 				destination[2] = current_position[2];
-				feedrate = feedrate_Extrude_Retract; 
+				feedrate = fr_retract; 
 				prepare_move();
 
 				active_extruder=sauvegarde_extruder;
 				relative_mode = false;
 
 				break;
-			}	
+			}
 
 
 
@@ -4648,6 +4668,7 @@ void process_commands()
 				disable_e0();
 				disable_e1();
 				disable_e2();
+				fanSpeed = 0;
 
 
 
@@ -4908,6 +4929,7 @@ void process_commands()
 				disable_e0();
 				disable_e1();
 				disable_e2();
+				fanSpeed = 0;
 				break;
 			}
 		case 1905: 
@@ -4990,6 +5012,7 @@ void process_commands()
 				disable_e0();
 				disable_e1();
 				disable_e2();
+				fanSpeed = 0;
 
 				break;
 			}

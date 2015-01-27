@@ -558,8 +558,8 @@ ISR(TIMER1_COMPA_vect)
 #if PRIVATE_ENDSTOPS1 > -1
 
 				bool e0_endstop = (READ(PRIVATE_ENDSTOPS1) != E_ENDSTOPS_INVERTING);
-				if(!e0_endstop && !old_e0_endstop && (current_block->steps_e > 0)
-						&& (!unloading_command || current_block->steps_e == axis_steps_per_unit[E_AXIS] * Unloading_part3_length)) { // in unloading, only check endstop in part3
+				if(!e0_endstop && !old_e0_endstop && (current_block->steps_e > 0) && unloading_command
+						&& current_block->steps_e == axis_steps_per_unit[E_AXIS] * Unloading_part3_length) { // only check endstop in part3 of unloading
 					endstops_trigsteps[E_AXIS] = count_position[E_AXIS];
 					endstop_e_hit=true;
 					step_events_completed = current_block->step_event_count;
@@ -571,8 +571,8 @@ ISR(TIMER1_COMPA_vect)
 #if PRIVATE_ENDSTOPS2 > -1
 
 				bool e1_endstop = (READ(PRIVATE_ENDSTOPS2) != E_ENDSTOPS_INVERTING);
-				if(!e1_endstop && !old_e1_endstop && (current_block->steps_e > 0)
-						&& (!unloading_command || current_block->steps_e == axis_steps_per_unit[E_AXIS] * Unloading_part3_length)) { // in unloading, only check endstop in part3
+				if(!e1_endstop && !old_e1_endstop && (current_block->steps_e > 0) && unloading_command
+						&& current_block->steps_e == axis_steps_per_unit[E_AXIS] * Unloading_part3_length) { // only check endstop in part3 of unloading
 					endstops_trigsteps[E_AXIS] = count_position[E_AXIS];
 					endstop_e_hit=true;
 					step_events_completed = current_block->step_event_count;
