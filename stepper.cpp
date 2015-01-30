@@ -520,46 +520,11 @@ ISR(TIMER1_COMPA_vect)
 			count_direction[E_AXIS]=-1;
 			CHECK_ENDSTOPS
 			{
-
-				//////////    Cette partie est faite pour le cas des 1606 et 1607 à fin qu'on puisse gérer le dechargement de la cassette/////////////
-
-//#if PRIVATE_ENDSTOPS1 > -1
-//
-//				bool e_min_endstop=(READ(PRIVATE_ENDSTOPS1) != E_ENDSTOPS_INVERTING);
-//				if((!e_min_endstop) && (!old_e_min_endstop) && (current_block->steps_e > 0)&&(active_extruder==0)&&(unloading_critical_state==false)) {
-//					endstops_trigsteps[E_AXIS] = count_position[E_AXIS];
-//					endstop_e_hit=true;
-//					step_events_completed = current_block->step_event_count;	
-//					// verification for the unloading command				
-//					if(unloading_command==true)
-//						unloading_critical_state = true;
-//					comptage = 2;
-//				}
-//				old_e_min_endstop = e_min_endstop;
-//
-//#endif
-//
-//#if PRIVATE_ENDSTOPS2 > -1
-//
-//				bool e_min_endstop2=(READ(PRIVATE_ENDSTOPS2) != E_ENDSTOPS_INVERTING);
-//				if((!e_min_endstop2) && (!old_e_min_endstop2) && (current_block->steps_e > 0)&&(active_extruder==1)&&(unloading_critical_state==false)) {
-//					endstops_trigsteps[E_AXIS] = count_position[E_AXIS];
-//					endstop_e_hit=true;
-//					step_events_completed = current_block->step_event_count;
-//					if(unloading_command==true)
-//						unloading_critical_state = true;
-//					comptage = 2;
-//				}
-//				old_e_min_endstop2 = e_min_endstop2;
-//
-//
-//#endif
-
 #if PRIVATE_ENDSTOPS1 > -1
 
 				bool e0_endstop = (READ(PRIVATE_ENDSTOPS1) != E_ENDSTOPS_INVERTING);
 				if(!e0_endstop && !old_e0_endstop && (current_block->steps_e > 0) && unloading_command
-						&& current_block->steps_e == axis_steps_per_unit[E_AXIS] * Unloading_part3_length) { // only check endstop in part3 of unloading
+						&& current_block->steps_e == axis_steps_per_unit[E_AXIS] * UNLOADING_PART3_LENGTH) { // only check endstop in part3 of unloading
 					endstops_trigsteps[E_AXIS] = count_position[E_AXIS];
 					endstop_e_hit=true;
 					step_events_completed = current_block->step_event_count;
@@ -572,7 +537,7 @@ ISR(TIMER1_COMPA_vect)
 
 				bool e1_endstop = (READ(PRIVATE_ENDSTOPS2) != E_ENDSTOPS_INVERTING);
 				if(!e1_endstop && !old_e1_endstop && (current_block->steps_e > 0) && unloading_command
-						&& current_block->steps_e == axis_steps_per_unit[E_AXIS] * Unloading_part3_length) { // only check endstop in part3 of unloading
+						&& current_block->steps_e == axis_steps_per_unit[E_AXIS] * UNLOADING_PART3_LENGTH) { // only check endstop in part3 of unloading
 					endstops_trigsteps[E_AXIS] = count_position[E_AXIS];
 					endstop_e_hit=true;
 					step_events_completed = current_block->step_event_count;
@@ -794,12 +759,12 @@ ISR(TIMER1_COMPA_vect)
 		if (step_events_completed >= current_block->step_event_count) 
 		{
 			// disable unloading variable after part3
-			if (unloading_command && current_block->steps_e == axis_steps_per_unit[E_AXIS] * Unloading_part3_length) {
+			if (unloading_command && current_block->steps_e == axis_steps_per_unit[E_AXIS] * UNLOADING_PART3_LENGTH) {
 				unloading_command = false;
 			}
 			
 			current_block = NULL;
-			plan_discard_current_block();						  			  
+			plan_discard_current_block();
 			allow_cold_extrudes(false);
 
 

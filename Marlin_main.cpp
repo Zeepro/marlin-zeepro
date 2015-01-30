@@ -48,7 +48,7 @@ http://reprap.org/pipermail/reprap-dev/2011-May/003323.html
 #include <SPI.h>
 #endif
 
-#define VERSION_STRING  "1.1.0.8"
+#define VERSION_STRING  "1.1.0.10"
 
 //Stepper Movement Variables
 
@@ -83,7 +83,7 @@ float extruder_offset[2][EXTRUDERS] = {
 #endif
 float extruders_offset_changement[2]={0,0};
 uint8_t active_extruder = 0;
-bool unloading_critical_state = false;
+// bool unloading_critical_state = false;
 bool unloading_command = false;
 //bool Commande_cartridge = false;
 int fanSpeed=0;
@@ -178,10 +178,13 @@ bool premier_transport = true;
 byte TAG_RFID_E0[16]={0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
 byte TAG_RFID_E1[16]={0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
 
-float Distance_Filament_E0=0;
-
-float Distance_Filament_E1=0; 
-
+float Distance_Filament_E0 = 0;
+float Distance_Filament_E1 = 0;
+float Distance_Consumption_E0 = 0;
+float Distance_Consumption_E1 = 0;
+bool Is_PVA_E0 = false;
+bool Is_PVA_E1 = false;
+bool Has_Paused_in_Print = false;
 
 ///////////////////////////Fonction pour les deux thermistance/////////////////
 
@@ -208,7 +211,7 @@ float numero_fichier_sd=-1;
 
 
 // Activation interruption
-bool Desactiver_interruption = false;
+// bool Desactiver_interruption = false;
 
 
 //===========================================================================
@@ -217,6 +220,14 @@ bool Desactiver_interruption = false;
 
 void get_arc_coordinates();
 bool setTargetedHotend(int code);
+
+//DIY add define functions here
+// void Moving_X(float distance_x, float feedrate_x);
+// void Moving_Y(float distance_y, float feedrate_y);
+// void Moving_Z(float distance_z, float feedrate_z);
+// void Moving_E(float distance_e, float feedrate_e);
+void Read_offset_E2PROM();
+//DIY end - PNI
 
 void serial_echopair_P(const char *s_P, float v)
 { serialprintPGM(s_P); SERIAL_ECHO(v); }
@@ -275,16 +286,15 @@ void enquecommand_P(const char *cmd)
 	}
 }
 
-void setup_killpin()
-{
+// DIY functions start
+void setup_killpin() {
 #if( KILL_PIN>-1 )
 	pinMode(KILL_PIN,INPUT);
 	WRITE(KILL_PIN,HIGH);
 #endif
 }
 
-void setup_photpin()
-{
+void setup_photpin() {
 #ifdef PHOTOGRAPH_PIN
 #if (PHOTOGRAPH_PIN > -1)
 	SET_OUTPUT(PHOTOGRAPH_PIN);
@@ -293,8 +303,7 @@ void setup_photpin()
 #endif 
 }
 
-void setup_powerhold()
-{ 
+void setup_powerhold() {
 #ifdef SUICIDE_PIN
 #if (SUICIDE_PIN> -1)
 	SET_OUTPUT(SUICIDE_PIN);
@@ -307,19 +316,7 @@ void setup_powerhold()
 #endif
 }
 
-void suicide()
-{
-#ifdef SUICIDE_PIN
-#if (SUICIDE_PIN> -1) 
-	SET_OUTPUT(SUICIDE_PIN);
-	WRITE(SUICIDE_PIN, LOW);
-#endif
-#endif
-}
-
-
-void suicide_Zim_Setup()
-{
+void suicide_Zim_Setup() {
 
 #if (SUICIDE_Zim_PIN> -1) 
 	SET_OUTPUT(SUICIDE_Zim_PIN);
@@ -327,9 +324,7 @@ void suicide_Zim_Setup()
 #endif
 }
 
-
-void suicide_Zim()
-{
+void suicide_Zim() {
 
 #if (SUICIDE_Zim_PIN> -1) 
 	WRITE(SUICIDE_Zim_PIN, HIGH);
@@ -337,10 +332,7 @@ void suicide_Zim()
 
 }
 
-
-
-void setup_green_led()
-{
+void setup_green_led() {
 
 #if (Commande_Green> -1) 
 	SET_OUTPUT(Commande_Green);
@@ -349,27 +341,20 @@ void setup_green_led()
 
 }
 
-
-
-void declaration_personnal_pin()
-{
-
-
+void declaration_personnal_pin() {
 	// Fan 2  
 	pinMode(FAN_v2, OUTPUT);
-
-	// LED bleue
+	
+	// blue LED
 	pinMode(LED_blue, OUTPUT);
-
-	//StripLed Gauche et Droite
+	
+	// right and left StripLed
 	pinMode(LED_Rampes_droite, OUTPUT);
 	pinMode(LED_Rampes_gauche, OUTPUT);
 	//Endstop_voyage
 
 	//Atmel
 	//pinMode(ATMEL_IN_PUSH, INPUT);
-
-
 
 
 #if Endstop_voyage > -1
@@ -395,80 +380,19 @@ void declaration_personnal_pin()
 #endif
 #endif
 
-}	
+}
+// DIY functions end
 
+void suicide() {
+#ifdef SUICIDE_PIN
+#if (SUICIDE_PIN> -1) 
+	SET_OUTPUT(SUICIDE_PIN);
+	WRITE(SUICIDE_PIN, LOW);
+#endif
+#endif
+}
 
-
-
-void Lecture_offset_E2PROM()
-{
-
-
-	//#ifdef EEPROM_SETTINGS
-	int offset_x_e2prom=0;
-	int position_offset_x_e2prom=1500;
-	EEPROM_READ_VAR(position_offset_x_e2prom, offset_x_e2prom);	
-	//	MYSERIAL.print("\n X=");					
-	//	MYSERIAL.print(offset_x_e2prom);
-
-	int offset_y_e2prom=0;
-	int position_offset_y_e2prom=1600;
-	EEPROM_READ_VAR(position_offset_y_e2prom, offset_y_e2prom);	
-	//		MYSERIAL.print("\n Y=");					
-	//		MYSERIAL.print(offset_y_e2prom);
-	//		MYSERIAL.print("\n");
-
-
-	if((offset_x_e2prom<0))
-		extruders_offset_changement[0]=0;
-	else
-	{
-
-		if(offset_x_e2prom>100)
-			extruders_offset_changement[0]=100-offset_x_e2prom;
-		else
-			extruders_offset_changement[0]=offset_x_e2prom;
-
-	}
-
-	//MYSERIAL.print("\n Avant X=");			
-	//MYSERIAL.print(extruder_offset[X_AXIS][1]);
-
-	extruder_offset[X_AXIS][1] = extruder_offset[X_AXIS][1]+(extruders_offset_changement[X_AXIS]/10);
-
-	//MYSERIAL.print("\n nouveau X=");			
-	//MYSERIAL.print(extruder_offset[X_AXIS][1]);
-
-	if(offset_y_e2prom<0)
-		extruders_offset_changement[1]=0;
-	else
-	{
-
-		if(offset_y_e2prom>100)
-			extruders_offset_changement[1]=100-offset_y_e2prom;
-		else
-			extruders_offset_changement[1]=offset_y_e2prom; 
-	}
-
-	//MYSERIAL.print("\n ancien Y=");
-	//MYSERIAL.print(extruder_offset[Y_AXIS][1]);
-	extruder_offset[Y_AXIS][1] = extruder_offset[Y_AXIS][1]+(extruders_offset_changement[Y_AXIS]/10);
-	//MYSERIAL.print("\n nouveau Y=");
-	//MYSERIAL.print(extruder_offset[Y_AXIS][1]);
-
-
-}	
-
-
-
-
-
-
-
-
-
-void setup()
-{
+void setup() {
 	setup_killpin(); 
 	setup_powerhold();
 	setup_green_led();
@@ -544,23 +468,13 @@ void setup()
 	//envoie_commande(Initialize_Port,length_Initialize_Port,3);	
 	envoie_commande(Set_Antenna_Status_OFF,length_Set_Antenna_Status_OFF,3); 
 	Antenna_RFID_State= false;	
-	MYSERIAL.print("\n");*/
+	SERIAL_PROTOCOL("\n");*/
 #endif
-	Lecture_offset_E2PROM();
-	MYSERIAL.print("END_INITIALISATION\n");
+	Read_offset_E2PROM();
+	SERIAL_PROTOCOL("END_INITIALISATION\n");
 }
 
-
-
-
-
-
-
-
-
-
-void loop()
-{
+void loop() {
 
 	if(buflen < (BUFSIZE-1))
 		get_command();
@@ -581,7 +495,7 @@ void loop()
 				}
 				else
 				{
-					MYSERIAL.print("\n");
+					SERIAL_PROTOCOL("\n");
 					SERIAL_PROTOCOLLNPGM(MSG_OK);
 				}
 			}
@@ -611,114 +525,62 @@ void loop()
 	lcd_update();
 	Fonction_Transport();
 	Function_Z_Movement();
-	Function_Carre ();
+	Function_Carre();
 
-} 
+}
 
 
 #ifdef RFIDSUPPORT
 int cmdPort = -1;
-#endif
+#endif //RFIDSUPPORT
 
 
-void get_command() 
-{ 
-	//Ahjout des commande du RFID
-
-#ifdef RFIDSUPPORT
-	while( (MYSERIAL.available() ) > 0  && buflen < BUFSIZE) 
+void get_command() {
+	while( MYSERIAL.available() > 0  && buflen < BUFSIZE)
 	{
+		// add RFID support
+#ifdef RFIDSUPPORT
 		if (-1 == cmdPort) {
 			if (MYSERIAL.available()) {
 				cmdPort = 0;
-			} 
+			}
 		}
 		if (0 == cmdPort) {
 			serial_char = MYSERIAL.read();
 		}
-
-		/////////// ici j'ai rajout? les messages////////////////////////////////
-
-		if (MSG_PRONTERFACE== true)
-		{
-			SERIAL_PROTOCOLPGM("J'ai reu cette lettre : ");	   
-			SERIAL_PROTOCOL(serial_char); 	 
-			SERIAL_PROTOCOLPGM("\n");
-		}	 
-
-
-		if (serial_char == '\n')
-		{	
-			numero_ligne_pronterface++; 
-			/*if (fichier_sd==true)
-			{	
-			numero_fichier_sd++; 	
-			} 	*/
-
-			if(card.saving)
-			{
-				numero_fichier_sd++; 
-			}
-		}
-
-
-
-
-		/////////////////////////////////////////////////////////////////
-
-		if(serial_char == '\n' || 
-			serial_char == '\r' || 
-			(serial_char == ':' && comment_mode == false) || 
-			serial_count >= (MAX_CMD_SIZE - 1) ) 
-		{
-			cmdPort = -1;
-#else
-
-
-	while( MYSERIAL.available() > 0  && buflen < BUFSIZE) 
-	{
-
-
-
+#else //RFIDSUPPORT
 		serial_char = MYSERIAL.read();
-
-
-		/////////// ici j'ai rajout? les messages////////////////////////////////
-
-		if (MSG_PRONTERFACE== true)
-		{
-			SERIAL_PROTOCOLPGM("J'ai reu cette lettre : ");	  
-			SERIAL_PROTOCOL(serial_char); 	 
+#endif //RFIDSUPPORT
+		
+		//DIY here I have re-added messages (just translation, not cleaned - PNI)
+		if (MSG_PRONTERFACE== true) {
+			SERIAL_PROTOCOLPGM("I have received this letter: ");
+			SERIAL_PROTOCOL(serial_char);
 			SERIAL_PROTOCOLPGM("\n");
-		}	 
-
-
-		if (serial_char == '\n')
-		{	
+		}
+		
+		if (serial_char == '\n') {
 			numero_ligne_pronterface++;
-			/* if (fichier_sd==true)
-			{	
-			numero_fichier_sd++; 	
-			} 	*/
-
-			if(card.saving)
-			{
-				numero_fichier_sd++; 
+/* 			if (fichier_sd==true) {
+				numero_fichier_sd++;
+			}
+ */
+			// guess that it's for SD print percentage count which is in deprecation and not in use - PNI
+			//TODO need clean unused global variable (and why it's a float for integer line number, use unsigned int or long instead for value region)
+			if(card.saving) {
+				numero_fichier_sd++;
 			}
 		}
-		/////////////////////////////////////////////////////////////////
-
-
+		//DIY end
+		
 		if(serial_char == '\n' || 
-			serial_char == '\r' || 
-			(serial_char == ':' && comment_mode == false) || 
-			serial_count >= (MAX_CMD_SIZE - 1) ) 
-		{
-
-
-#endif
-
-
+				serial_char == '\r' || 
+				(serial_char == ':' && comment_mode == false) || 
+				serial_count >= (MAX_CMD_SIZE - 1) ) {
+			// RFID support
+#ifdef RFIDSUPPORT
+			cmdPort = -1;
+#endif //RFIDSUPPORT
 
 			if(!serial_count)
 			{ //if empty line
@@ -835,17 +697,6 @@ void get_command()
 		}	
 	}
 
-
-
-
-
-
-
-
-
-
-
-
 #ifdef SDSUPPORT
 	if(!card.sdprinting || serial_count!=0){
 		return;
@@ -853,33 +704,27 @@ void get_command()
 	while( !card.eof()  && buflen < BUFSIZE) {
 		int16_t n=card.get();
 		serial_char = (char)n;
-
-		/////ici j'ai rajout?///////////////////////
-
-		if (MSG_SDCARD== true)
-		{
-			SERIAL_PROTOCOLPGM("J'ai reu cette lettre : ");	  
-			SERIAL_PROTOCOL(serial_char); 	 
+		
+		//DIY here I have re-added (just translation, not cleaned - PNI)
+		if (MSG_SDCARD== true) {
+			SERIAL_PROTOCOLPGM("I have received this letter: ");
+			SERIAL_PROTOCOL(serial_char);
 			SERIAL_PROTOCOLPGM("\n");
 		}
-
-		if (serial_char == '\n') 
-		{	
-			numero_ligne_sd_card++;	
+		
+		if (serial_char == '\n') {
+			numero_ligne_sd_card++;
 			digitalWrite(13, HIGH);
 			delay(1000);
 			digitalWrite(13, LOW);
 		} 
-		////////////////////////////////////
-
-
-
+		//DIY end
+		
 		if(serial_char == '\n' || 
 			serial_char == '\r' || 
 			(serial_char == ':' && comment_mode == false) || 
 			serial_count >= (MAX_CMD_SIZE - 1)||n==-1) 
 		{
-
 
 			if(card.eof()){
 				SERIAL_PROTOCOLLNPGM(MSG_FILE_PRINTED);
@@ -1005,19 +850,266 @@ static void homeaxis(int axis) {
 #define HOMEAXIS(LETTER) homeaxis(LETTER##_AXIS)
 
 
-// ici les fonctions pour finir les choses : 
+// start to define DIY function here:
+void Message_wait() {
+	SERIAL_PROTOCOL("wait\n");
+}
 
-void ecrir_sur_RFID1()
-{
+void Moving_X(float distance_x, float feedrate_x) {
+	destination[X_AXIS] = distance_x + current_position[X_AXIS];
+	// destination[Y_AXIS] = current_position[Y_AXIS];
+	// destination[Z_AXIS] = current_position[Z_AXIS];
+	// destination[E_AXIS] = current_position[E_AXIS];
+	feedrate = feedrate_x;
+	
+	prepare_move();
+	
+	return;
+}
+
+void Moving_Y(float distance_y, float feedrate_y) {
+	destination[Y_AXIS] = distance_y + current_position[Y_AXIS];
+	// destination[X_AXIS] = current_position[X_AXIS];
+	// destination[Z_AXIS] = current_position[Z_AXIS];
+	// destination[E_AXIS] = current_position[E_AXIS];
+	feedrate = feedrate_y;
+	
+	prepare_move();
+	
+	return;
+}
+
+FORCE_INLINE void MovingBase_Z(bool relative, float distance_z, float feedrate_z) {
+	destination[Z_AXIS] = distance_z + relative * current_position[Z_AXIS];
+	// destination[X_AXIS] = current_position[X_AXIS];
+	// destination[Y_AXIS] = current_position[Y_AXIS];
+	// destination[E_AXIS] = current_position[E_AXIS];
+	feedrate = feedrate_z;
+	
+	prepare_move();
+	
+	return;
+}
+
+void MovingTo_Z(float distance_z, float feedrate_z) {
+	MovingBase_Z(false, distance_z, feedrate_z);
+	
+	return;
+}
+
+void Moving_Z(float distance_z, float feedrate_z) {
+	MovingBase_Z(true, distance_z, feedrate_z);
+	
+	return;
+}
+
+void Moving_E(float distance_e, float feedrate_e) {
+	destination[E_AXIS] = distance_e + current_position[E_AXIS];
+	// destination[X_AXIS] = current_position[X_AXIS];
+	// destination[Y_AXIS] = current_position[Y_AXIS];
+	// destination[Z_AXIS] = current_position[Z_AXIS];
+	feedrate = feedrate_e;
+	
+	prepare_move();
+	
+	return;
+}
+
+FORCE_INLINE void MovingBase_head(bool relative, float distance_x, float distance_y, float feedrate_h) {
+	destination[X_AXIS] = distance_x + relative * current_position[X_AXIS];
+	destination[Y_AXIS] = distance_y + relative * current_position[Y_AXIS];
+	// destination[Z_AXIS] = current_position[Z_AXIS];
+	// destination[E_AXIS] = current_position[E_AXIS];
+	feedrate = feedrate_h;
+	
+	prepare_move();
+	
+	return;
+}
+
+void MovingTo_head(float distance_x, float distance_y, float feedrate_h) {
+	MovingBase_head(false, distance_x, distance_y, feedrate_h);
+	
+	return;
+}
+
+FORCE_INLINE void Center_head() {
+	MovingTo_head(75, 75, homing_feedrate[X_AXIS]);
+	
+	return;
+}
+
+void Reverse_20mm() {
+	float fr_retract = FEEDRATE_EXTRUDE_RETRACT;
+	uint8_t original_extruder = active_extruder;
+	
+	// first extruder
+	if(Distance_Filament_E0 > 0) {
+		active_extruder = 0;
+		
+		if (Is_PVA_E0 == true) {
+			fr_retract = FEEDRATE_EXTRUDE_RETRACT_PVA;
+		}
+		
+		Moving_E(-DISTANCE_EXTRUDE_RETRACT, FEEDRATE_EXTRUDE_RETRACT);
+	}
+	
+	// second extruder
+	if(Distance_Filament_E1 > 0) {
+		active_extruder = 1;
+		fr_retract = FEEDRATE_EXTRUDE_RETRACT;
+		
+		if (Is_PVA_E1 == true) {
+			fr_retract = FEEDRATE_EXTRUDE_RETRACT_PVA;
+		}
+		
+		Moving_E(-DISTANCE_EXTRUDE_RETRACT, FEEDRATE_EXTRUDE_RETRACT);
+	}
+	
+	active_extruder = original_extruder;
+	
+	return;
+}
+
+void Homing_head() {
+	// Homing
+	HOMEAXIS(X);
+	HOMEAXIS(Y);
+	
+	return;
+}
+
+void Moving_X_Y_Z_Voyage() {
+	float Distance_Load_X = 75;
+	float Distance_Load_Y = 200;
+	float Distance_Load_Z = 200;
+	float Distance_Load_Z_parking = 94;
+	float feedrate_X_Y = 2000;
+	// float feedrate_Z = 200;
+	
+	// homing
+	HOMEAXIS(X);
+	HOMEAXIS(Z);
+	
+	// start to move
+	// MovingTo_head(Distance_Load_X, Distance_Load_Y, feedrate_X_Y);
+	Moving_X(Distance_Load_X, feedrate_X_Y);
+	Moving_Y(Distance_Load_Y, feedrate_X_Y);
+	Moving_Z(Distance_Load_Z, homing_feedrate[Z_AXIS]);
+	Moving_Z(-Distance_Load_Z_parking, homing_feedrate[Z_AXIS]);
+	
+	return;
+}
+
+void Moving_Z_movement() {
+	float Distance_Z_movement = 500;
+	// float feedrate_Z_mouvement = 200;
+	
+	// homing
+	HOMEAXIS(Z);
+	
+	// start to move
+	Moving_Z(Distance_Z_movement, homing_feedrate[Z_AXIS]);
+	Moving_Z(-Distance_Z_movement, homing_feedrate[Z_AXIS]);
+	
+	return;
+}
+
+void Moving_Carre() {
+	float feedrate_X_Y_Movement = 2000;
+	float Distance_X_Movement = 300;
+	float Distance_Y_Movement = 300;
+	
+	// homing
+	HOMEAXIS(X);
+	HOMEAXIS(Y);
+	
+	// relative_mode = true;
+	
+	// square 1 (300, value is in declaration above)
+	Moving_X(Distance_X_Movement, feedrate_X_Y_Movement);
+	Moving_Y(Distance_Y_Movement, feedrate_X_Y_Movement);
+	Moving_X(-Distance_X_Movement, feedrate_X_Y_Movement);
+	Moving_Y(-Distance_Y_Movement, feedrate_X_Y_Movement);
+	
+	// square 2 start at (40, 40)
+	MovingTo_head(40, 40, feedrate_X_Y_Movement);
+	
+	// square 2 (50)
+	Distance_X_Movement = 50;
+	Distance_Y_Movement = 50;
+	
+	Moving_X(Distance_X_Movement, feedrate_X_Y_Movement);
+	Moving_Y(Distance_Y_Movement, feedrate_X_Y_Movement);
+	Moving_X(-Distance_X_Movement, feedrate_X_Y_Movement);
+	Moving_Y(-Distance_Y_Movement, feedrate_X_Y_Movement);
+	
+	// relative_mode = false;
+	return;
+}
+
+void Read_offset_E2PROM() {
+	// #ifdef EEPROM_SETTINGS
+	int offset_x_e2prom = 0;
+	int position_offset_x_e2prom = 1500;
+	int offset_y_e2prom = 0;
+	int position_offset_y_e2prom = 1600;
+	
+	EEPROM_READ_VAR(position_offset_x_e2prom, offset_x_e2prom);
+	// SERIAL_PROTOCOL("\n X=");
+	// SERIAL_PROTOCOL(offset_x_e2prom);
+	
+	EEPROM_READ_VAR(position_offset_y_e2prom, offset_y_e2prom);	
+	// SERIAL_PROTOCOL("\n Y=");
+	// SERIAL_PROTOCOL(offset_y_e2prom);
+	// SERIAL_PROTOCOL("\n");
+	
+	if((offset_x_e2prom < 0)) {
+		extruders_offset_changement[0] = 0;
+	}
+	else if (offset_x_e2prom > 100) {
+		extruders_offset_changement[0]=100 - offset_x_e2prom;
+	}
+	else {
+		extruders_offset_changement[0] = offset_x_e2prom;
+	}
+	// SERIAL_PROTOCOL("\n old X=");
+	// SERIAL_PROTOCOL(extruder_offset[X_AXIS][1]);
+	
+	extruder_offset[X_AXIS][1] = extruder_offset[X_AXIS][1] + (extruders_offset_changement[X_AXIS] / 10);
+	// SERIAL_PROTOCOL("\n new X=");
+	// SERIAL_PROTOCOL(extruder_offset[X_AXIS][1]);
+	
+	if(offset_y_e2prom < 0) {
+		extruders_offset_changement[1] = 0;
+	}
+	else if(offset_y_e2prom>100) {
+		extruders_offset_changement[1] = 100 - offset_y_e2prom;
+	}
+	else {
+		extruders_offset_changement[1] = offset_y_e2prom;
+	}
+	//SERIAL_PROTOCOL("\n old Y=");
+	//SERIAL_PROTOCOL(extruder_offset[Y_AXIS][1]);
+	
+	extruder_offset[Y_AXIS][1] = extruder_offset[Y_AXIS][1] + (extruders_offset_changement[Y_AXIS] / 10);
+	//SERIAL_PROTOCOL("\n new Y=");
+	//SERIAL_PROTOCOL(extruder_offset[Y_AXIS][1]);
+	
+	return;
+}
+
+//TODO need clean these two RFID functions later
+void Write_RFID1() {
 	//#ifdef TEST
 	//	return; //do nothing for test
 	//#endif //TEST
 
-	if (Distance_Filament_E0>=4) {
-		Distance_Filament_E0 = Distance_Filament_E0 - 4;
+	if (Distance_Filament_E0 >= DISTANCE_EXTRUDE_RETRACT) {
+		Distance_Filament_E0 = Distance_Filament_E0 - DISTANCE_EXTRUDE_RETRACT;
 	}
 
-	if(Distance_Filament_E0>0) {
+	if(Distance_Filament_E0 > 0) {
 		byte commande_ecriture_tag_E0[]={0x0a,0x00,0x00,0x00,0x13,0x02,0x06,0x00,0x00,0x00,0x00};
 		byte length_commande_ecriture_tag_E0 = sizeof(commande_ecriture_tag_E0);
 		byte TAG_E0[16]={0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
@@ -1086,16 +1178,16 @@ void ecrir_sur_RFID1()
 	}
 }
 
-void ecrir_sur_RFID2() {
+void Write_RFID2() {
 	//#ifdef TEST
 	//	return; //do nothing for test
 	//#endif //TEST
 
-	if (Distance_Filament_E1>=4) {
-		Distance_Filament_E1 = Distance_Filament_E1 - 4;
+	if (Distance_Filament_E1 >= DISTANCE_EXTRUDE_RETRACT) {
+		Distance_Filament_E1 = Distance_Filament_E1 - DISTANCE_EXTRUDE_RETRACT;
 	}
 
-	if(Distance_Filament_E1>0) {
+	if(Distance_Filament_E1 > 0) {
 		byte commande_ecriture_tag_E1[]={0x0a,0x00,0x00,0x00,0x13,0x02,0x06,0x00,0x00,0x00,0x00};
 		byte length_commande_ecriture_tag_E1 = sizeof(commande_ecriture_tag_E1);
 		byte TAG_E1[16]={0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
@@ -1166,734 +1258,170 @@ void ecrir_sur_RFID2() {
 	}
 }
 
-void Message_wait()
-{
-	MYSERIAL.print("wait\n");
-}	
-
-void Reverse_20mm()
-{
-
-	// first extruder//
-
-	float Distance_Load=4;
-	uint8_t sauvegarde_extruder = active_extruder;
-	active_extruder=0;
-	relative_mode = true;
-
-	if(Distance_Filament_E0>0)
-	{
-		destination[3] =  - Distance_Load + (axis_relative_modes[3] || relative_mode)*current_position[3];
-		destination[0] = current_position[0];
-		destination[1] = current_position[1];
-		destination[2] = current_position[2];
-		feedrate = feedrate_Extrude_Retract; 
-		prepare_move();
-		//		delay(1000);
+void Reinitialize_E0_E1_Quantity(bool assign_consumption) {
+	if (assign_consumption == true) {
+		// assign old quantity as consumption
+		if (Has_Paused_in_Print == true) {
+			Distance_Consumption_E0 += Distance_Filament_E0;
+			Distance_Consumption_E1 += Distance_Filament_E1;
+		}
+		else {
+			Distance_Consumption_E0 = Distance_Filament_E0;
+			Distance_Consumption_E1 = Distance_Filament_E1;
+		}
 	}
-
-	// second extruder//
-	active_extruder=1; 	
-	if(Distance_Filament_E1>0)
-	{
-		destination[3] =  - Distance_Load + (axis_relative_modes[3] || relative_mode)*current_position[3];
-		destination[0] = current_position[0];
-		destination[1] = current_position[1];
-		destination[2] = current_position[2];
-		feedrate = feedrate_Extrude_Retract; 
-		prepare_move();
+/* 
+	else {
+		Distance_Consumption_E0 = 0;
+		Distance_Consumption_E1 = 0;
 	}
-
-	active_extruder=sauvegarde_extruder;
-	relative_mode = false; 
-	//	delay(1000);
-
-}
-
-
-void Extrude_20mm()
-{
-
-	// first extruder//
-
-	float Distance_Load=4;
-	uint8_t sauvegarde_extruder = active_extruder;
-	active_extruder=0; 		
-	relative_mode = true;
-
-	destination[3] = Distance_Load + (axis_relative_modes[3] || relative_mode)*current_position[3];
-	destination[0] = current_position[0];
-	destination[1] = current_position[1];
-	destination[2] = current_position[2];
-	feedrate = feedrate_Extrude_Retract; 
-	prepare_move(); 
-
-	// second extruder//
-	active_extruder=1; 	
-
-	destination[3] = Distance_Load + (axis_relative_modes[3] || relative_mode)*current_position[3];
-	destination[0] = current_position[0];
-	destination[1] = current_position[1];
-	destination[2] = current_position[2];
-	feedrate = feedrate_Extrude_Retract; 
-	prepare_move(); 
-
-
-	active_extruder=sauvegarde_extruder;
-	relative_mode = false; 
-	//	delay(1000);
-
-
-
-
-}	
-
-void Extrude_20mm_first()
-{
-	// first extruder//
-	float Distance_Load=4;
-	uint8_t sauvegarde_extruder = active_extruder;
-	active_extruder=0; 		
-	relative_mode = true;
-
-	destination[3] = Distance_Load + (axis_relative_modes[3] || relative_mode)*current_position[3];
-	destination[0] = current_position[0];
-	destination[1] = current_position[1];
-	destination[2] = current_position[2];
-	feedrate = feedrate_Extrude_Retract;
-	prepare_move();
-
-	active_extruder=sauvegarde_extruder;
-	relative_mode = false; 
-	//	delay(1000);
-}
-
-void Extrude_20mm_second()
-{
-	// second extruder//
-	float Distance_Load=4;
-	uint8_t sauvegarde_extruder = active_extruder;
-	active_extruder=1; 		
-	relative_mode = true;
-
-	destination[3] = Distance_Load + (axis_relative_modes[3] || relative_mode)*current_position[3];
-	destination[0] = current_position[0];
-	destination[1] = current_position[1];
-	destination[2] = current_position[2];
-	feedrate = feedrate_Extrude_Retract; 
-	prepare_move();
-
-	active_extruder=sauvegarde_extruder;
-	relative_mode = false; 
-	//	delay(1000);
-}	
-
-
-
-
-
-void Reinitialise_E0_E1_Quantity()
-{
-
+ */
+	
 	Distance_Filament_E0 = 0;
 	Distance_Filament_E1 = 0;
-
-
+	
+	return;
 }
 
-void Set_temperature_to_0Degree()
-{
-	////////// Set Temperature to 0? /////////////
-
-	uint8_t sauvegarde_extruder = active_extruder;
-	active_extruder=1;
-	float Temprature_eteinte = 0;
-	setTargetHotend(Temprature_eteinte, active_extruder);
-	active_extruder=0;
-	setTargetHotend(Temprature_eteinte, active_extruder);
-	active_extruder=sauvegarde_extruder;
-
-	////////// Fin Temerature to 0? /////////////
-
-	// reset target temperature (by Peng on 20140708)
+void Set_temperature_to_0Degree() {
+	// set temperature to 0
+	float Temprature_shutdown = 0;
+	
+	setTargetHotend(Temprature_shutdown, 1);
+	setTargetHotend(Temprature_shutdown, 0);
+	
+	// reset target temperature (by PNI on 20140708)
 	TMP0_Target = 0;
 	TMP1_Target = 0;
+	
+	return;
 }
 
-
-void Moving_X_Y()
-{
-	///////// Homing ////////////////////////
-	HOMEAXIS(X);
-	HOMEAXIS(Y);
-}
-
-void Moving_X_Y_Z_Voyage()
-{
-	///////// Homing ////////////////////////
-	HOMEAXIS(X);
-	HOMEAXIS(Z);
-
-	///////// X ////////////////////////
-	float Distance_Load_X=75;	
-	float Distance_Load_Y=200;	
-	float Distance_Load_Z=200;	
-	float Distance_Load_Z_parking=94;
-	relative_mode = true;
-	float feedrate_X_Y = 2000;	
-	float feedrate_Z = 200;
-
-	destination[0] = Distance_Load_X + (axis_relative_modes[0] || relative_mode)*current_position[0];
-	destination[1] = current_position[1];
-	destination[2] = current_position[2];
-	destination[3] = current_position[3];
-	feedrate = feedrate_X_Y; 
-	prepare_move(); 
-	//	delay(1000);
-
-	////// Fin X /////////////////////////
-
-	///////// Y ////////////////////////	
-
-	destination[1] = Distance_Load_Y + (axis_relative_modes[1] || relative_mode)*current_position[1];
-	destination[0] = current_position[0];
-	destination[2] = current_position[2];
-	destination[3] = current_position[3];
-	feedrate = feedrate_X_Y; 
-	prepare_move(); 
-	//	delay(1000);
-
-	////// Fin Y /////////////////////////
-
-
-
-
-	///////// Z ////////////////////////
-
-	destination[2] = Distance_Load_Z + (axis_relative_modes[2] || relative_mode)*current_position[2];
-	destination[0] = current_position[0];
-	destination[1] = current_position[1];
-	destination[3] = current_position[3];
-	feedrate = feedrate_Z; 
-	prepare_move(); 
-	//	delay(1000);
-
-	////// Z 2 /////////////////////////
-
-
-	destination[2] = -Distance_Load_Z_parking + (axis_relative_modes[2] || relative_mode)*current_position[2];
-	destination[0] = current_position[0];
-	destination[1] = current_position[1];
-	destination[3] = current_position[3];
-	feedrate = feedrate_Z; 
-	prepare_move(); 
-	//	delay(1000);
-
-	////// Fin Z /////////////////////////
-
-
-	relative_mode = false;
-
-}
-
-
-
-
-
-void Moving_Z_movement()
-{
-
-
-
-	///////// Homing ////////////////////////
-	HOMEAXIS(Z);
-
-
-
-
-	///////// Z ////////////////////////
-
-
-	//Movement 1
-	float Distance_Z_movement=500;		
-	relative_mode = true;
-	float feedrate_Z_mouvement = 200;
-
-	destination[2] = Distance_Z_movement + (axis_relative_modes[2] || relative_mode)*current_position[2];
-	destination[0] = current_position[0];
-	destination[1] = current_position[1];
-	destination[3] = current_position[3];
-	feedrate = feedrate_Z_mouvement; 
-	prepare_move(); 
-	//	delay(1000);
-
-
-	//Movement 2
-
-	destination[2] = -Distance_Z_movement + (axis_relative_modes[2] || relative_mode)*current_position[2];
-	destination[0] = current_position[0];
-	destination[1] = current_position[1];
-	destination[3] = current_position[3];
-	feedrate = feedrate_Z_mouvement; 
-	prepare_move(); 
-	//	delay(1000);
-
-	////// Fin Z /////////////////////////
-
-
-	relative_mode = false;
-
-
-
-
-
-}
-
-
-
-void Moving_Carre()
-{
-
-
-
-
-	///////// Homing ////////////////////////
-	HOMEAXIS(X);
-	HOMEAXIS(Y);
-
-	//// Faire le grand carr?//////
-
-	///////// X ////////////////////////
-	float Distance_X_Movement=300;	
-	relative_mode = true;
-	float feedrate_X_Y_Movement = 2000;
-
-	destination[0] = Distance_X_Movement + (axis_relative_modes[0] || relative_mode)*current_position[0];
-	destination[1] = current_position[1];
-	destination[2] = current_position[2];
-	destination[3] = current_position[3];
-	feedrate = feedrate_X_Y_Movement; 
-	prepare_move(); 
-	//	delay(1000);
-
-	////// Fin X /////////////////////////
-
-
-
-
-	///////// Y ////////////////////////
-	float Distance_Y_Movement=300;	
-
-	destination[1] = Distance_Y_Movement + (axis_relative_modes[1] || relative_mode)*current_position[1];
-	destination[0] = current_position[0];
-	destination[2] = current_position[2];
-	destination[3] = current_position[3];
-	feedrate = feedrate_X_Y_Movement; 
-	prepare_move(); 
-	//	delay(1000);
-
-	////// Fin Y /////////////////////////
-
-
-
-
-
-	///////// X ////////////////////////
-
-	destination[0] = - Distance_X_Movement + (axis_relative_modes[0] || relative_mode)*current_position[0];
-	destination[1] = current_position[1];
-	destination[2] = current_position[2];
-	destination[3] = current_position[3];
-	feedrate = feedrate_X_Y_Movement; 
-	prepare_move(); 
-	//	delay(1000);
-
-	////// Fin X /////////////////////////
-
-
-
-
-	///////// Y ////////////////////////
-
-	destination[1] = - Distance_Y_Movement + (axis_relative_modes[1] || relative_mode)*current_position[1];
-	destination[0] = current_position[0];
-	destination[2] = current_position[2];
-	destination[3] = current_position[3];
-	feedrate = feedrate_X_Y_Movement; 
-	prepare_move(); 
-	//	delay(1000);
-
-	////// Fin Y /////////////////////////
-
-
-
-	///////// Allller au centre///////////////////
-
-
-	///////// X ////////////////////////
-	Distance_X_Movement=40;	
-
-	destination[0] = Distance_X_Movement + (axis_relative_modes[0] || relative_mode)*current_position[0];
-	destination[1] = current_position[1];
-	destination[2] = current_position[2];
-	destination[3] = current_position[3];
-	feedrate = feedrate_X_Y_Movement; 
-	prepare_move(); 
-	//	delay(1000);
-
-	////// Fin X /////////////////////////
-
-
-
-
-	///////// Y ////////////////////////
-	Distance_Y_Movement=40;	
-
-	destination[1] = Distance_Y_Movement + (axis_relative_modes[1] || relative_mode)*current_position[1];
-	destination[0] = current_position[0];
-	destination[2] = current_position[2];
-	destination[3] = current_position[3];
-	feedrate = feedrate_X_Y_Movement; 
-	prepare_move(); 
-	//	delay(1000);
-
-	////// Fin Y /////////////////////////
-
-
-
-
-
-	// commencer le petit point du careau
-
-
-
-
-	///////// X ////////////////////////
-	Distance_X_Movement=50;	
-
-	destination[0] = Distance_X_Movement + (axis_relative_modes[0] || relative_mode)*current_position[0];
-	destination[1] = current_position[1];
-	destination[2] = current_position[2];
-	destination[3] = current_position[3];
-	feedrate = feedrate_X_Y_Movement; 
-	prepare_move(); 
-	//	delay(1000);
-
-	////// Fin X ///////////////////////// 
-
-
-
-
-	///////// Y ////////////////////////
-	Distance_Y_Movement=50;	
-
-	destination[1] = Distance_Y_Movement + (axis_relative_modes[1] || relative_mode)*current_position[1];
-	destination[0] = current_position[0];
-	destination[2] = current_position[2];
-	destination[3] = current_position[3];
-	feedrate = feedrate_X_Y_Movement; 
-	prepare_move(); 
-	//	delay(1000);
-
-	////// Fin Y /////////////////////////
-
-
-
-
-
-	///////// X ////////////////////////
-
-	destination[0] = - Distance_X_Movement + (axis_relative_modes[0] || relative_mode)*current_position[0];
-	destination[1] = current_position[1];
-	destination[2] = current_position[2];
-	destination[3] = current_position[3];
-	feedrate = feedrate_X_Y_Movement; 
-	prepare_move(); 
-	//	delay(1000);
-
-	////// Fin X /////////////////////////
-
-
-
-
-	///////// Y ////////////////////////
-
-	destination[1] = - Distance_Y_Movement + (axis_relative_modes[1] || relative_mode)*current_position[1];
-	destination[0] = current_position[0];
-	destination[2] = current_position[2];
-	destination[3] = current_position[3];
-	feedrate = feedrate_X_Y_Movement; 
-	prepare_move(); 
-	//	delay(1000);
-
-	////// Fin Y /////////////////////////
-
-
-
-
-
-
-
-	relative_mode = false;
-
-
-}
-
-
-
-void Moving_Z_1()
-{
-
-
-
-	///////// Homing ////////////////////////
-	float Distance_Load_Z_1=50;	
-	relative_mode = true;
-	float feedrate_Z_1 = 500;
-
-	destination[2] = Distance_Load_Z_1 + (axis_relative_modes[2] || relative_mode)*current_position[2];
-	destination[0] = current_position[0];
-	destination[1] = current_position[1];
-	destination[3] = current_position[3];
-	feedrate = feedrate_Z_1; 
-	prepare_move(); 
-	//	delay(1000);
-
-	////// Fin Homing /////////////////////////
-
-	relative_mode = false;
-
-}
-
-
-void Moving_Z_2()
-{
-
-
-
-	///////// Homing ////////////////////////
-	float Distance_Load_Z_2=150;	
-	relative_mode = true;
-	float feedrate_Z_2 = 500;
-
-	destination[2] = Distance_Load_Z_2 + (axis_relative_modes[2] || relative_mode)*current_position[2];
-	destination[0] = current_position[0];
-	destination[1] = current_position[1];
-	destination[3] = current_position[3];
-	feedrate = feedrate_Z_2; 
-	prepare_move(); 
-	//	delay(1000);
-
-	////// Fin Homing /////////////////////////
-
-	relative_mode = false;
-
-}
-
-
-void Moving_Z_3()
-{
-
-
-
-	///////// Homing ////////////////////////
-	float Distance_Load_Z_3=1;	
-	relative_mode = true;
-	float feedrate_Z_3 = 200;
-
-	destination[2] = -Distance_Load_Z_3 + (axis_relative_modes[2] || relative_mode)*current_position[2];
-	destination[0] = current_position[0];
-	destination[1] = current_position[1];
-	destination[3] = current_position[3];
-	feedrate = feedrate_Z_3; 
-	prepare_move(); 
-	//	delay(1000); 
-
-	////// Fin Homing /////////////////////////
-
-	relative_mode = false;
-
-}
-
-
-void Moving_Z_4()
-{
-
-
-
-	///////// Homing ////////////////////////
-	float Distance_Load_Z_4=11;	
-	relative_mode = true;
-	float feedrate_Z_4 = 200;
-
-	destination[2] = Distance_Load_Z_4 + (axis_relative_modes[2] || relative_mode)*current_position[2];
-	destination[0] = current_position[0];
-	destination[1] = current_position[1];
-	destination[3] = current_position[3];
-	feedrate = feedrate_Z_4; 
-	prepare_move(); 
-	//	delay(1000);
-
-	////// Fin Homing /////////////////////////
-
-	relative_mode = false;
-
-}
-
-
-
-void saving_current_parameters()
-{
-
+void Saving_current_parameters() {
 	Pause_current_position[X_parm]=current_position[X_AXIS];
 	Pause_current_position[Y_parm]=current_position[Y_AXIS];
 	Pause_current_position[Z_parm]=current_position[Z_AXIS];
 	Pause_current_position[T0_parm]=TMP0_Target;
 	Pause_current_position[T1_parm]=TMP1_Target;
-
-
-
-}	
-
-void return_current_parameters()
-{
-
-	SERIAL_PROTOCOLPGM("X:");
-	SERIAL_PROTOCOL(Pause_current_position[X_parm]);
-	SERIAL_PROTOCOLPGM(", Y:");
-	SERIAL_PROTOCOL(Pause_current_position[Y_parm]);
-	SERIAL_PROTOCOLPGM(", Z:");
-	SERIAL_PROTOCOL(Pause_current_position[Z_parm]);
-	SERIAL_PROTOCOLPGM(", T0:");      
-	SERIAL_PROTOCOL(Pause_current_position[T0_parm]);
-	SERIAL_PROTOCOLPGM(", T1:");      
-	SERIAL_PROTOCOL(Pause_current_position[T1_parm]);
-
-
-
-
+	
+	return;
 }
 
-void Set_current_paramters()
-{
-
-
-
-
-	//Moving for X
-
-	relative_mode = false;
-
-	destination[0] = Pause_current_position[X_AXIS] + (axis_relative_modes[0] || relative_mode)*current_position[0];
-	destination[1] = current_position[1];
-	destination[2] = current_position[2];	
-	destination[3] = current_position[3];
-	feedrate = 2000;
-	prepare_move(); 
-	//	delay(1000);
-
-	//Moving for Y
-
-	destination[1] = Pause_current_position[Y_AXIS] + (axis_relative_modes[1] || relative_mode)*current_position[1];
-	destination[0] = current_position[0];
-	destination[2] = current_position[2];	
-	destination[3] = current_position[3];
-	feedrate = 2000;
-	prepare_move(); 
-	//	delay(1000);					
-
-	//Moving for Z
-
-	destination[2] = Pause_current_position[Z_AXIS] + (axis_relative_modes[2] || relative_mode)*current_position[2];
-	destination[0] = current_position[0];
-	destination[1] = current_position[1];
-	destination[3] = current_position[3];
-	feedrate = 500;
-	prepare_move(); 					
-
-	//	delay(1000);
-
-
-	// For T0
-
-	uint8_t sauvegarde_extruder = active_extruder;
-	active_extruder=0; 							
-	setTargetHotend(Pause_current_position[T0_parm], active_extruder);
-
-	// For T1
-	active_extruder=1; 							
-	setTargetHotend(Pause_current_position[T1_parm], active_extruder);
-	active_extruder=sauvegarde_extruder;
-
-
-
-
-
+void Set_to_Temperature_in_Resume(uint8_t extruder_set, float temper_set) {
+	unsigned long codenum; //throw away variable
+	uint8_t original_extruder = tmp_extruder;
+	
+	// assign variable and set temperature (in comment here because we have done it before)
+	tmp_extruder = extruder_set;
+	// setTargetHotend(temper_set, extruder_set);
+	
+	// copy of custom M109 code part here (a little arrangement)
+	{
+		LCD_MESSAGEPGM(MSG_HEATING);
+#ifdef AUTOTEMP
+		autotemp_enabled = false;
+#endif
+#ifdef AUTOTEMP
+		autotemp_min = temper_set;
+#endif
+		setWatch();
+		codenum = millis(); 
+		/* See if we are heating up or cooling down */
+		bool target_direction = isHeatingHotend(tmp_extruder); // true if heating, false if cooling
+#ifdef TEMP_RESIDENCY_TIME
+		long residencyStart;
+		residencyStart = -1;
+		/* continue to loop until we have reached the target temp   
+		_and_ until TEMP_RESIDENCY_TIME hasn't passed since we reached it */
+		while( (residencyStart == -1) ||
+				(residencyStart >= 0 && (((unsigned int) (millis() - residencyStart)) < (TEMP_RESIDENCY_TIME * 1000UL))) )
+#else
+		while ( target_direction ? (isHeatingHotend(tmp_extruder)) : (isCoolingHotend(tmp_extruder)&&(CooldownNoWait==false)) )
+#endif //TEMP_RESIDENCY_TIME
+		{
+			if( (millis() - codenum) > 1000UL ) { //Print Temp Reading and remaining time every 1 second while heating up/cooling down
+				SERIAL_PROTOCOL("T:");
+				SERIAL_PROTOCOL_F(degHotend(tmp_extruder),1); 
+				SERIAL_PROTOCOL(" E:");
+				SERIAL_PROTOCOL((int)tmp_extruder); 
+#ifdef TEMP_RESIDENCY_TIME
+				SERIAL_PROTOCOL(" W:");
+				if(residencyStart > -1) {
+					codenum = ((TEMP_RESIDENCY_TIME * 1000UL) - (millis() - residencyStart)) / 1000UL;
+					SERIAL_PROTOCOLLN( codenum );
+				}
+				else {
+					SERIAL_PROTOCOLLN( "?" );
+				}
+#else
+				SERIAL_PROTOCOLLN("");
+#endif
+				codenum = millis();
+			}
+			manage_heater();
+			Read_Power_Button();
+			CheckTemperatureToActivateFan();
+			manage_inactivity();
+			lcd_update();
+#ifdef TEMP_RESIDENCY_TIME
+			/* start/restart the TEMP_RESIDENCY_TIME timer whenever we reach target temp for the first time
+			or when current temp falls outside the hysteresis after target temp was reached */
+			if ((residencyStart == -1 &&  target_direction && (degHotend(tmp_extruder) >= (degTargetHotend(tmp_extruder)-TEMP_WINDOW))) ||
+				(residencyStart == -1 && !target_direction && (degHotend(tmp_extruder) <= (degTargetHotend(tmp_extruder)+TEMP_WINDOW))) ||
+				(residencyStart > -1 && labs(degHotend(tmp_extruder) - degTargetHotend(tmp_extruder)) > TEMP_HYSTERESIS) ) 
+			{
+				residencyStart = millis();
+			}
+#endif //TEMP_RESIDENCY_TIME
+		}
+		LCD_MESSAGEPGM(MSG_HEATING_COMPLETE);
+		starttime=millis();
+		previous_millis_cmd = millis();
+	}
+	// end of custom M109 code part
+	
+	tmp_extruder = original_extruder;
+	
+	return;
 }
 
-
-
-
-
-
-void Set_current_paramters_2()
-{
-
-
-
-
-	//Moving for X
-
-	relative_mode = false;
-
-	destination[0] = Pause_current_position[X_AXIS] + (axis_relative_modes[0] || relative_mode)*current_position[0];
-	destination[1] = current_position[1];
-	destination[2] = current_position[2];	
-	destination[3] = current_position[3];
-	feedrate = 2000;
-	prepare_move(); 
-	//	delay(1000);
-
-	//Moving for Y
-
-	destination[1] = Pause_current_position[Y_AXIS] + (axis_relative_modes[1] || relative_mode)*current_position[1];
-	destination[0] = current_position[0];
-	destination[2] = current_position[2];	
-	destination[3] = current_position[3];
-	feedrate = 2000;
-	prepare_move(); 
-	//	delay(1000);					
-
-	//Moving for Z
-
-	destination[2] = Pause_current_position[Z_AXIS] + (axis_relative_modes[2] || relative_mode)*current_position[2];
-	destination[0] = current_position[0];
-	destination[1] = current_position[1];
-	destination[3] = current_position[3];
-	feedrate = 500;
-	prepare_move(); 					
-
-	//	delay(1000);
-
-
-
-
-
-
-
+void Extrude_20mm_in_Resume(bool extrude_e0, bool extrude_e1) {
+	float fr_extrude = FEEDRATE_EXTRUDE_RETRACT;
+	uint8_t original_extruder = active_extruder;
+	
+	// first extruder
+	if (extrude_e0 == true) {
+		active_extruder = 0;
+		
+		if (Is_PVA_E0 == true) {
+			fr_extrude = FEEDRATE_EXTRUDE_RETRACT_PVA;
+		}
+		
+		Moving_E(DISTANCE_EXTRUDE_RETRACT, fr_extrude);
+	}
+	
+	// second extruder
+	if (extrude_e1 == true) {
+		active_extruder = 1;
+		fr_extrude = FEEDRATE_EXTRUDE_RETRACT;
+		
+		if (Is_PVA_E1 == true) {
+			fr_extrude = FEEDRATE_EXTRUDE_RETRACT_PVA;
+		}
+		
+		Moving_E(DISTANCE_EXTRUDE_RETRACT, fr_extrude);
+	}
+	
+	active_extruder = original_extruder;
+	
+	return;
 }
 
+void kill_Zim() {
+	SERIAL_PROTOCOL("\n Oh noooo, You kill the ZIM :-( \n");
+	quickStop();
 
-
-
-
-
-void kill_Zim()
-{
-
-	MYSERIAL.print("\n Oh noooo, You kill the ZIM :-( \n");
-	quickStop(); 
-
+	//TODO check if it's no meaning for this part 1 of LED control? - PNI
 	digitalWrite(Commande_Green, LOW);   // turn the LED on (LOW is the voltage level)
 	//  delay(1000); 
 	digitalWrite(Commande_Green, HIGH);   // turn the LED on (HIGH is the voltage level)
@@ -1907,52 +1435,45 @@ void kill_Zim()
 	//  delay(1000);               // wait for a second
 	// digitalWrite(SUICIDE_Zim_PIN, HIGH);    // turn the LED off by making the voltage LOW
 	//delay(1000);
+	// part 1 of LED control end
 
+	//Write_RFID1();
+	//Write_RFID2();
 
-
-	//ecrir_sur_RFID1();
-
-
-	//ecrir_sur_RFID2();  
-
-	if ((Distance_Filament_E0>0)||(Distance_Filament_E1>0))
-	{
-
-		Moving_Z_4();
+	if ((Distance_Filament_E0 > 0) || (Distance_Filament_E1 > 0)) {
+		Moving_Z(11, 200); // old Moving_Z_4 (perhaps for power off in printing)
+		Reverse_20mm();
 	}
 
-	Reverse_20mm();	
+	//Reinitialize_E0_E1_Quantity(false);
+	//SERIAL_PROTOCOL("/n move_Z\n");
 
-	//Reinitialise_E0_E1_Quantity();
-
-	//MYSERIAL.print("/n move_Z\n");
-
-	//Moving_X_Y();
+	//Homing_head();
 	//Set_temperature_to_0Degree();  
-	disable_heater(); 
-	Moving_Z_3(); 
+	disable_heater();
+	
+	// old Moving_Z_3 here, but why move up platform in power off in any case? disable it for security for now - PNI
+	//TODO check the reason of this strange action of platform rise (1mm)
+	// Moving_Z(-1, 200);
 
-
-	while(blocks_queued())
-	{
+	// check if we have finished all actions in buffer or not
+	//TODO check if this part will possibly be endless when we are in printing and following commands are sent to Marlin successively
+	while(blocks_queued()) {
 		WRITE(Commande_Green, HIGH);
-		delay(250);   
+		delay(250);
 		WRITE(Commande_Green, LOW);
 		delay(250);
-	}		
+	}
 
-
+	// 2 blinks of LED
 	digitalWrite(Commande_Green, HIGH);   // turn the LED on (HIGH is the voltage level)
 	delay(100);               // wait for a second
 	digitalWrite(Commande_Green, LOW);    // turn the LED off by making the voltage LOW
 	delay(100);
-
 	digitalWrite(Commande_Green, HIGH);   // turn the LED on (HIGH is the voltage level)
 	delay(100);               // wait for a second
 	digitalWrite(Commande_Green, LOW);    // turn the LED off by making the voltage LOW
 	delay(100);               // wait for a second
-
-
 
 	cli(); // Stop interrupts
 	disable_x();
@@ -1967,9 +1488,6 @@ void kill_Zim()
 	SERIAL_ERRORLNPGM(MSG_ERR_KILLED);
 	LCD_ALERTMESSAGEPGM(MSG_KILLED);
 
-
-
-
 	suicide_Zim();
 	/*
 	while(1) { // Intentionally left empty  
@@ -1977,12 +1495,9 @@ void kill_Zim()
 	*/
 
 	void(* resetFunc) (void) = 0; 
-	resetFunc();  
-
-
-
+	resetFunc();
 }
-
+// end of DIY functions
 
 void process_commands()
 {
@@ -2422,7 +1937,7 @@ void process_commands()
 				if(setTargetedHotend(109)){
 					break;
 				}
-				LCD_MESSAGEPGM(MSG_HEATING);   
+				LCD_MESSAGEPGM(MSG_HEATING);
 #ifdef AUTOTEMP
 				autotemp_enabled=false;
 #endif
@@ -3301,7 +2816,7 @@ void process_commands()
 		case 1306: 
 			{
 				MYSERIAL.write("Le nombre de ligne de commande envoy? au processeur par la carte SD est : ");	 
-				MYSERIAL.print(numero_ligne_sd_card);
+				SERIAL_PROTOCOL(numero_ligne_sd_card);
 				MYSERIAL.write("\n");
 
 
@@ -3333,7 +2848,7 @@ void process_commands()
 				SERIAL_PROTOCOL_F(degHotend(numero_extruder),1); 		
 				MYSERIAL.write("\n");
 				MYSERIAL.write("Le nombre de ligne de commande envoy? au processeur est : ");	 
-				MYSERIAL.print(numero_ligne_sd_card);
+				SERIAL_PROTOCOL(numero_ligne_sd_card);
 				MYSERIAL.write("\n");
 
 				break;
@@ -3365,10 +2880,10 @@ void process_commands()
 				EEPROM_READ_VAR(position_esteps, donnees_e_steps);
 				//#endif
 
-				MYSERIAL.print(position_esteps);
-				MYSERIAL.print("\t");
-				MYSERIAL.print(donnees_e_steps);
-				MYSERIAL.println();
+				SERIAL_PROTOCOL(position_esteps);
+				SERIAL_PROTOCOL("\t");
+				SERIAL_PROTOCOL(donnees_e_steps);
+				SERIAL_PROTOCOL('\n');
 
 				break;
 			}
@@ -3381,7 +2896,7 @@ void process_commands()
 			{
 				numero_ligne_pronterface--;
 				MYSERIAL.write("Le nombre de ligne de commande envoy? au processeur par pronterface est: ");	 
-				MYSERIAL.print(numero_ligne_pronterface);
+				SERIAL_PROTOCOL(numero_ligne_pronterface);
 				MYSERIAL.write("\n");
 
 
@@ -3430,10 +2945,10 @@ void process_commands()
 			{
 
 				numero_extruder=0;
-				SERIAL_PROTOCOLPGM("TEMP 1:");
+				SERIAL_PROTOCOL("TEMP 1:");
 				SERIAL_PROTOCOL_F(degHotend(numero_extruder),1);  
 				numero_extruder=1;
-				SERIAL_PROTOCOLPGM(" - TEMP 2:");
+				SERIAL_PROTOCOL(" - TEMP 2:");
 				SERIAL_PROTOCOL_F(degHotend(numero_extruder),1); 
 
 
@@ -3457,24 +2972,24 @@ void process_commands()
 					if (Taux_dimpression==0)
 					{
 
-						MYSERIAL.print("1");
+						SERIAL_PROTOCOL("1");
 					}
 					else
 					{
-						MYSERIAL.print(Taux_dimpression); 
+						SERIAL_PROTOCOL(Taux_dimpression); 
 					}
 
 				}
 				else
 				{
-					MYSERIAL.print(SD_printing);
+					SERIAL_PROTOCOL(SD_printing);
 				}	
 
-				/*MYSERIAL.print("\n");
-				MYSERIAL.print(numero_ligne_sd_card);
-				MYSERIAL.print("\n");
-				MYSERIAL.print(numero_fichier_sd);
-				MYSERIAL.print("\n");*/
+				/*SERIAL_PROTOCOL("\n");
+				SERIAL_PROTOCOL(numero_ligne_sd_card);
+				SERIAL_PROTOCOL("\n");
+				SERIAL_PROTOCOL(numero_fichier_sd);
+				SERIAL_PROTOCOL("\n");*/
 
 
 				break;
@@ -3495,7 +3010,7 @@ void process_commands()
 			{// Serial2 read cartridge
 
 				//#ifdef TEST
-				//		MYSERIAL.print("5C1200FF000014C0800000646900ED05");
+				//		SERIAL_PROTOCOL("5C1200FF000014C0800000646900ED05");
 
 				//#else
 				if(RFID2_14_15_OK)
@@ -3523,11 +3038,11 @@ void process_commands()
 					envoie_commande(Mifare_Read1,length_Mifare_Read1,2); 
 					envoie_commande(Mifare_Hlta,length_Mifare_Hlta,2); 
 
-					//MYSERIAL.print("#");
-					//MYSERIAL.print(millis() - start, DEC);
-					//MYSERIAL.print("#");
+					//SERIAL_PROTOCOL("#");
+					//SERIAL_PROTOCOL(millis() - start, DEC);
+					//SERIAL_PROTOCOL("#");
 
-					MYSERIAL.print("\n"); 
+					SERIAL_PROTOCOL("\n"); 
 				}
 				//#endif
 
@@ -3537,7 +3052,7 @@ void process_commands()
 			{// Serial3 read cartridge 
 
 				//#ifdef TEST
-				//		MYSERIAL.print("5C1200FFFFFF14C08000005C6200ED36");
+				//		SERIAL_PROTOCOL("5C1200FFFFFF14C08000005C6200ED36");
 				//#else
 				if(RFID1_16_17_OK)
 				{
@@ -3560,7 +3075,7 @@ void process_commands()
 					//envoie_commande(Mifare_Authentication24,length_Mifare_Authentication24,2); 
 					envoie_commande(Mifare_Read1,length_Mifare_Read1,3);
 					envoie_commande(Mifare_Hlta,length_Mifare_Hlta,3); 
-					MYSERIAL.print("\n");
+					SERIAL_PROTOCOL("\n");
 				}
 				//#endif
 
@@ -3568,173 +3083,131 @@ void process_commands()
 			}
 		case 1604: 
 			{ // loading right cartridge
-				uint8_t sauvegarde_extruder = active_extruder;
-				float fr_critical = feedrate_Critical_Loading;
-				float fr_default = feedrate_Loading;
+				uint8_t original_extruder = active_extruder;
+				float fr_critical = FEEDRATE_CRITICAL_LOADING;
+				float fr_default = FEEDRATE_LOADING;
 				
 				if (code_seen(CODE_PVA_IN_LOADING_UNLOADING)) {
-					fr_critical = feedrate_Critical_Loading_PVA;
-					fr_default = feedrate_Loading_PVA;
+					fr_critical = FEEDRATE_CRITICAL_LOADING_PVA;
+					fr_default = FEEDRATE_LOADING_PVA;
+					Is_PVA_E0 = true;
+				}
+				else {
+					Is_PVA_E0 = false;
 				}
 				
-				active_extruder=0;
+				active_extruder = 0;
 				allow_cold_extrudes(true);
-				//Commande_cartridge=true;
-				relative_mode = true;
-
-				//First mouvement
-				destination[3] =  Distance_Critical_Loading + (axis_relative_modes[3] || relative_mode)*current_position[3];
-				destination[0] = current_position[0];
-				destination[1] = current_position[1];
-				destination[2] = current_position[2];
-				feedrate = fr_critical;
-				prepare_move();
-
-				// Second mouvement
-				destination[3] =  Distance_Loading_right + (axis_relative_modes[3] || relative_mode)*current_position[3];
-				destination[0] = current_position[0];
-				destination[1] = current_position[1];
-				destination[2] = current_position[2];
-				feedrate = fr_default;
-				prepare_move();
-
-				//Réinitilisation
+				// Commande_cartridge=true;
+				// relative_mode = true;
+				
+				// first move
+				Moving_E(DISTANCE_CRITICAL_LOADING, fr_critical);
+				// second move
+				Moving_E(DISTANCE_LOADING_RIGHT, fr_default);
+				
+				// reinitialization
 				Distance_Filament_E0 = 0;
-
-				active_extruder=sauvegarde_extruder;
-				relative_mode = false;
-
+				
+				active_extruder = original_extruder;
+				// relative_mode = false;
+				
 				break;
 			}
 
 		case 1605: 
 			{ // loading left cartridge
-				uint8_t sauvegarde_extruder = active_extruder;
-				float fr_critical = feedrate_Critical_Loading;
-				float fr_default = feedrate_Loading;
+				uint8_t original_extruder = active_extruder;
+				float fr_critical = FEEDRATE_CRITICAL_LOADING;
+				float fr_default = FEEDRATE_LOADING;
 				
 				if (code_seen(CODE_PVA_IN_LOADING_UNLOADING)) {
-					fr_critical = feedrate_Critical_Loading_PVA;
-					fr_default = feedrate_Loading_PVA;
+					fr_critical = FEEDRATE_CRITICAL_LOADING_PVA;
+					fr_default = FEEDRATE_LOADING_PVA;
+					Is_PVA_E1 = true;
+				}
+				else {
+					Is_PVA_E1 = false;
 				}
 				
-				active_extruder=1;
+				active_extruder = 1;
 				allow_cold_extrudes(true);
-				//Commande_cartridge=true;
-				relative_mode = true;
-
-				//First mouvement
-				destination[3] =  Distance_Critical_Loading + (axis_relative_modes[3] || relative_mode)*current_position[3];
-				destination[0] = current_position[0];
-				destination[1] = current_position[1];
-				destination[2] = current_position[2];
-				feedrate = fr_critical;
-				prepare_move();
-
-				// Second mouvement
-				destination[3] =  Distance_Loading_left + (axis_relative_modes[3] || relative_mode)*current_position[3];
-				destination[0] = current_position[0];
-				destination[1] = current_position[1];
-				destination[2] = current_position[2];
-				feedrate = fr_default;
-				prepare_move();
-
-				//Réinitilisation
+				// Commande_cartridge=true;
+				// relative_mode = true;
+				
+				// first move
+				Moving_E(DISTANCE_CRITICAL_LOADING, fr_critical);
+				// second move
+				Moving_E(DISTANCE_LOADING_LEFT, fr_default);
+				
+				// reinitialization
 				Distance_Filament_E1 = 0;
-
-				active_extruder=sauvegarde_extruder;
+				
+				active_extruder = original_extruder;
 				relative_mode = false;
-
+				
 				break;
 			}
 
 		case 1606: 
 			{ // unloading right cartridge
 				uint8_t orignal_extruder = active_extruder;
-				float fr_p1 = Unloading_part1_feedrate;
-				float fr_p2 = Unloading_part2_feedrate;
-				float fr_p3 = Unloading_part3_feedrate;
+				float fr_p1 = UNLOADING_PART1_FEEDRATE;
+				float fr_p2 = UNLOADING_PART2_FEEDRATE;
+				float fr_p3 = UNLOADING_PART3_FEEDRATE;
 				
 				if (code_seen(CODE_PVA_IN_LOADING_UNLOADING)) {
-					fr_p1 = Unloading_part1_feedrate_PVA;
-					fr_p2 = Unloading_part2_feedrate_PVA;
-					fr_p3 = Unloading_part3_feedrate_PVA;
+					fr_p1 = UNLOADING_PART1_FEEDRATE_PVA;
+					fr_p2 = UNLOADING_PART2_FEEDRATE_PVA;
+					fr_p3 = UNLOADING_PART3_FEEDRATE_PVA;
 				}
-
-				active_extruder=0;
+				
+				active_extruder = 0;
 				allow_cold_extrudes(true);
-				relative_mode = true;
+				// relative_mode = true;
 				unloading_command = true;
-
-				destination[3] = -Unloading_part1_length + (axis_relative_modes[3] || relative_mode)*current_position[3];
-				destination[0] = current_position[0];
-				destination[1] = current_position[1];
-				destination[2] = current_position[2];
-				feedrate = fr_p1;
-				prepare_move();
-
-				destination[3] = -Unloading_part2_length_right + (axis_relative_modes[3] || relative_mode)*current_position[3];
-				destination[0] = current_position[0];
-				destination[1] = current_position[1];
-				destination[2] = current_position[2];
-				feedrate = fr_p2;
-				prepare_move();
-
-				destination[3] = -Unloading_part3_length + (axis_relative_modes[3] || relative_mode)*current_position[3];
-				destination[0] = current_position[0];
-				destination[1] = current_position[1];
-				destination[2] = current_position[2];
-				feedrate = fr_p3;
-				prepare_move();
-
-				relative_mode = false;
+				
+				// first move
+				Moving_E(-UNLOADING_PART1_LENGTH, fr_p1);
+				// second move
+				Moving_E(-UNLOADING_PART2_LENGTH_RIGHT, fr_p2);
+				// third move
+				Moving_E(-UNLOADING_PART3_LENGTH, fr_p3);
+				
+				// relative_mode = false;
 				active_extruder = orignal_extruder;
-
+				
 				break;
 			}
 
 		case 1607: 
 			{ // unloading left cartridge
 				uint8_t orignal_extruder = active_extruder;
-				float fr_p1 = Unloading_part1_feedrate;
-				float fr_p2 = Unloading_part2_feedrate;
-				float fr_p3 = Unloading_part3_feedrate;
+				float fr_p1 = UNLOADING_PART1_FEEDRATE;
+				float fr_p2 = UNLOADING_PART2_FEEDRATE;
+				float fr_p3 = UNLOADING_PART3_FEEDRATE;
 				
 				if (code_seen(CODE_PVA_IN_LOADING_UNLOADING)) {
-					fr_p1 = Unloading_part1_feedrate_PVA;
-					fr_p2 = Unloading_part2_feedrate_PVA;
-					fr_p3 = Unloading_part3_feedrate_PVA;
+					fr_p1 = UNLOADING_PART1_FEEDRATE_PVA;
+					fr_p2 = UNLOADING_PART2_FEEDRATE_PVA;
+					fr_p3 = UNLOADING_PART3_FEEDRATE_PVA;
 				}
-
-				active_extruder=1;
+				
+				active_extruder = 1;
 				allow_cold_extrudes(true);
-				relative_mode = true;
+				// relative_mode = true;
 				unloading_command = true;
-
-				destination[3] = -Unloading_part1_length + (axis_relative_modes[3] || relative_mode)*current_position[3];
-				destination[0] = current_position[0];
-				destination[1] = current_position[1];
-				destination[2] = current_position[2]; 
-				feedrate = fr_p1;
-				prepare_move();
-
-				destination[3] = -Unloading_part2_length_left + (axis_relative_modes[3] || relative_mode)*current_position[3];
-				destination[0] = current_position[0];
-				destination[1] = current_position[1];
-				destination[2] = current_position[2]; 
-				feedrate = fr_p2;
-				prepare_move();
-
-				destination[3] = -Unloading_part3_length + (axis_relative_modes[3] || relative_mode)*current_position[3];
-				destination[0] = current_position[0];
-				destination[1] = current_position[1];
-				destination[2] = current_position[2]; 
-				feedrate = fr_p3;
-				prepare_move();
-
-				relative_mode = false;
+				
+				// first move
+				Moving_E(-UNLOADING_PART1_LENGTH, fr_p1);
+				// second move
+				Moving_E(-UNLOADING_PART2_LENGTH_LEFT, fr_p2);
+				// third move
+				Moving_E(-UNLOADING_PART3_LENGTH, fr_p3);
+				
+				// relative_mode = false;
 				active_extruder = orignal_extruder;
-
+				
 				break;
 			}
 
@@ -3764,7 +3237,7 @@ void process_commands()
 			}
 
 
-		case 1610 : {	// Read right RFID
+		case 1610 : {	// write right RFID
 
 			int Tag_ecriture_int[38];
 			byte Tag_ecriture_final[16]={0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};						
@@ -3836,7 +3309,7 @@ void process_commands()
 			}
 			break;
 					}
-		case 1611 : {	// Read left RFID
+		case 1611 : {	// write left RFID
 
 			int Tag_ecriture_int[38];
 			byte Tag_ecriture_final[16]={0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};						
@@ -3906,105 +3379,91 @@ void process_commands()
 			}
 			break;
 					}
+
 		case 1612: // loading Right Filament which takes as parameter the distance of loading
 			{
-
-				float Distance_Load=0;
-				if(code_seen('D')) {
-					Distance_Load = code_value();}
-
-
-				uint8_t sauvegarde_extruder = active_extruder;
-				active_extruder=0; 		
+				uint8_t original_extruder = active_extruder;
+				float Distance_Load = 0;
+				float fr_critical = FEEDRATE_CRITICAL_LOADING;
+				float fr_default = FEEDRATE_LOADING;
+				
+				if (code_seen('D')) {
+					Distance_Load = code_value();
+				}
+				
+				if (code_seen(CODE_PVA_IN_LOADING_UNLOADING)) {
+					fr_critical = FEEDRATE_CRITICAL_LOADING_PVA;
+					fr_default = FEEDRATE_LOADING_PVA;
+					Is_PVA_E0 = true;
+				}
+				else {
+					Is_PVA_E0 = false;
+				}
+				
+				active_extruder = 0;
 				allow_cold_extrudes(true);
-				//Commande_cartridge=true;
-				relative_mode = true;
-
-				destination[3] =  Distance_Critical_Loading + (axis_relative_modes[3] || relative_mode)*current_position[3];
-				destination[0] = current_position[0];
-				destination[1] = current_position[1];
-				destination[2] = current_position[2];
-				feedrate = feedrate_Critical_Loading;
-				prepare_move();
-
-
-
-
-				// Second mouvement
-				destination[3] =  Distance_Load - Distance_Critical_Loading + (axis_relative_modes[3] || relative_mode)*current_position[3];
-				destination[0] = current_position[0];
-				destination[1] = current_position[1];
-				destination[2] = current_position[2];
-				feedrate = feedrate_Loading; 
-				prepare_move(); 
-
-
-				active_extruder=sauvegarde_extruder;
-				relative_mode = false;
-
-
-
-
+				// Commande_cartridge=true;
+				// relative_mode = true;
+				
+				if (Distance_Load < DISTANCE_CRITICAL_LOADING) {
+					Moving_E(Distance_Load, fr_critical);
+				}
+				else {
+					Moving_E(DISTANCE_CRITICAL_LOADING, fr_critical);
+					Moving_E(Distance_Load - DISTANCE_CRITICAL_LOADING, fr_default);
+				}
+				
+				active_extruder=original_extruder;
+				// relative_mode = false;
+				
 				break;
 			}
-
-
-
-
-
 
 		case 1613: 
 			{// loading Left Filament which takes as parameter the distance of loading
-				float Distance_Load=0;
-				if(code_seen('D')) {
-					Distance_Load = code_value();}
-
-
-
-
-				uint8_t sauvegarde_extruder = active_extruder;
-				active_extruder=1; 		
+				uint8_t original_extruder = active_extruder;
+				float Distance_Load = 0;
+				float fr_critical = FEEDRATE_CRITICAL_LOADING;
+				float fr_default = FEEDRATE_LOADING;
+				
+				if (code_seen('D')) {
+					Distance_Load = code_value();
+				}
+				
+				if (code_seen(CODE_PVA_IN_LOADING_UNLOADING)) {
+					fr_critical = FEEDRATE_CRITICAL_LOADING_PVA;
+					fr_default = FEEDRATE_LOADING_PVA;
+					Is_PVA_E1 = true;
+				}
+				else {
+					Is_PVA_E1 = false;
+				}
+				
+				active_extruder = 1;
 				allow_cold_extrudes(true);
-				//Commande_cartridge=true;
-				relative_mode = true;
-
-				destination[3] =  Distance_Critical_Loading + (axis_relative_modes[3] || relative_mode)*current_position[3];
-				destination[0] = current_position[0];
-				destination[1] = current_position[1];
-				destination[2] = current_position[2];
-				feedrate = feedrate_Critical_Loading;
-				prepare_move();
-
-
-
-				// Second mouvement
-				destination[3] =  Distance_Load - Distance_Critical_Loading + (axis_relative_modes[3] || relative_mode)*current_position[3];
-				destination[0] = current_position[0];
-				destination[1] = current_position[1];
-				destination[2] = current_position[2];
-				feedrate = feedrate_Loading;
-				prepare_move(); 
-
-
-				active_extruder=sauvegarde_extruder;
-				relative_mode = false;
-
-
-
-
-
-
+				// Commande_cartridge=true;
+				// relative_mode = true;
+				
+				if (Distance_Load < DISTANCE_CRITICAL_LOADING) {
+					Moving_E(Distance_Load, fr_critical);
+				}
+				else {
+					Moving_E(DISTANCE_CRITICAL_LOADING, fr_critical);
+					Moving_E(Distance_Load - DISTANCE_CRITICAL_LOADING, fr_default);
+				}
+				
+				active_extruder=original_extruder;
+				// relative_mode = false;
+				
 				break;
 			}
-
-
 
 		case 1614: 
 			{// Get Strip_Led state 			
 				if (Strip_Led_State== true)
-					MYSERIAL.print("1"); 
+					SERIAL_PROTOCOL("1"); 
 				else
-					MYSERIAL.print("0"); 
+					SERIAL_PROTOCOL("0"); 
 
 
 				break;
@@ -4015,9 +3474,9 @@ void process_commands()
 			{// Get Top_Led state 			
 
 				if (Top_Led_State== true)
-					MYSERIAL.print("1"); 
+					SERIAL_PROTOCOL("1"); 
 				else
-					MYSERIAL.print("0"); 
+					SERIAL_PROTOCOL("0"); 
 
 				break;
 			}
@@ -4032,7 +3491,7 @@ void process_commands()
 				//envoie_commande(Initialize_Port,length_Initialize_Port,3);	
 				//envoie_commande(Set_Antenna_Status_ON,length_Set_Antenna_Status_ON,3); 	
 				Antenna_RFID_State= true;
-				MYSERIAL.print("\n");
+				SERIAL_PROTOCOL("\n");
 
 				break;
 
@@ -4053,7 +3512,7 @@ void process_commands()
 				//envoie_commande(Initialize_Port,length_Initialize_Port,3);	
 				envoie_commande(Set_Antenna_Status_OFF,length_Set_Antenna_Status_OFF,3); 
 				Antenna_RFID_State= false;	
-				MYSERIAL.print("\n");
+				SERIAL_PROTOCOL("\n");
 
 				break;
 
@@ -4064,12 +3523,12 @@ void process_commands()
 		case 1618: 
 			{// Get Antenna_RFID 
 				//#ifdef TEST
-				//					MYSERIAL.print("1");
+				//					SERIAL_PROTOCOL("1");
 				//#else
 				if (Antenna_RFID_State== true)
-					MYSERIAL.print("1"); 
+					SERIAL_PROTOCOL("1"); 
 				else
-					MYSERIAL.print("0"); 
+					SERIAL_PROTOCOL("0"); 
 				//#endif
 				break;
 			}
@@ -4084,7 +3543,7 @@ void process_commands()
 
 		case 1620: 
 			{// Obtention de la vitesse courante			
-				MYSERIAL.print(feedrate);
+				SERIAL_PROTOCOL(feedrate);
 
 				break;
 			}
@@ -4110,7 +3569,7 @@ void process_commands()
 				// Etat Cold Extrusion	
 				bool Etat = Etat_Cold_Extrusion();
 
-				MYSERIAL.print(Etat);
+				SERIAL_PROTOCOL(Etat);
 
 				break;        
 
@@ -4120,15 +3579,10 @@ void process_commands()
 
 		case 1623: 
 			{// Obtenir l'acceleration courante
-
-
-				MYSERIAL.print(acceleration);
+				SERIAL_PROTOCOL(acceleration);
 
 				break;
 			}
-
-
-
 
 		case 1624: 
 			{// D?finir l'acceleration courante
@@ -4139,311 +3593,96 @@ void process_commands()
 				break;
 			}
 
-
-		//case 1625:
-		//	{
-
-
-		//		// loading Right RFID PVA
-
-
-		//		uint8_t sauvegarde_extruder = active_extruder;
-		//		active_extruder=0; 		
-		//		allow_cold_extrudes(true);
-		//		Commande_cartridge=true;
-		//		relative_mode = true;
-
-
-		//		//First mouvement
-		//		destination[3] =  Distance_Critical_Loading + (axis_relative_modes[3] || relative_mode)*current_position[3];
-		//		destination[0] = current_position[0];
-		//		destination[1] = current_position[1];
-		//		destination[2] = current_position[2];
-		//		feedrate = 100;
-		//		prepare_move();
-
-
-
-		//		// Second mouvement
-		//		destination[3] =  Distance_Loading_right + (axis_relative_modes[3] || relative_mode)*current_position[3];
-		//		destination[0] = current_position[0];
-		//		destination[1] = current_position[1];
-		//		destination[2] = current_position[2];
-		//		feedrate = 500;
-		//		prepare_move();
-
-
-		//		//Réinitilisation
-		//		Distance_Filament_E0 = 0;
-
-
-
-		//		active_extruder=sauvegarde_extruder;
-		//		relative_mode = false;
-
-
-
-
-		//		break;
-
-
-
-
-
-
-		//	}
-
-
-//		case 1626: 
-//			{
-//				//Unloading RIGHT PVA
-//
-//				active_extruder=0;
-//				allow_cold_extrudes(true);
-//				relative_mode = true;
-//
-//				destination[3] = -Unloading_part1_length + (axis_relative_modes[3] || relative_mode)*current_position[3];
-//				destination[0] = current_position[0];
-//				destination[1] = current_position[1];
-//				destination[2] = current_position[2];
-//				feedrate = Unloading_part1_feedrate_PVA;
-//				prepare_move();
-//
-//				Message_wait();
-//
-//				destination[3] = -Unloading_part2_length_right + (axis_relative_modes[3] || relative_mode)*current_position[3];
-//				destination[0] = current_position[0];
-//				destination[1] = current_position[1];
-//				destination[2] = current_position[2];
-//				feedrate = Unloading_part2_feedrate_PVA;
-//				prepare_move();
-//
-//				Message_wait();
-//
-//				unloading_command = true;
-//
-//				destination[3] = -Unloading_part3_length + (axis_relative_modes[3] || relative_mode)*current_position[3];
-//				destination[0] = current_position[0];
-//				destination[1] = current_position[1];
-//				destination[2] = current_position[2];
-//				feedrate = Unloading_part3_feedrate_PVA;
-//				prepare_move();
-//
-//				relative_mode = false;
-//
-//				break;
-//			}
-
-		//case 1626:
-		//	{
-
-		//		// loading left RFID PVA
-
-
-		//		uint8_t sauvegarde_extruder = active_extruder;
-		//		active_extruder=1; 		
-		//		allow_cold_extrudes(true);
-		//		Commande_cartridge=true;
-		//		relative_mode = true;
-
-
-		//		//First mouvement
-		//		destination[3] =  Distance_Critical_Loading + (axis_relative_modes[3] || relative_mode)*current_position[3];
-		//		destination[0] = current_position[0];
-		//		destination[1] = current_position[1];
-		//		destination[2] = current_position[2];
-		//		feedrate = 100;
-		//		prepare_move();
-
-
-
-		//		// Second mouvement
-		//		destination[3] =  Distance_Loading_right + (axis_relative_modes[3] || relative_mode)*current_position[3];
-		//		destination[0] = current_position[0];
-		//		destination[1] = current_position[1];
-		//		destination[2] = current_position[2];
-		//		feedrate = 500;
-		//		prepare_move();
-
-
-		//		//Réinitilisation
-		//		Distance_Filament_E1 = 0;
-
-
-
-		//		active_extruder=sauvegarde_extruder;
-		//		relative_mode = false;
-
-
-
-
-		//		break;
-
-
-
-
-
-		//	}	
-
-//		case 1627: 
-//			{ 
-//				//Unloading LEFT PVA
-//
-//				//if ((READ(PRIVATE_ENDSTOPS2)^E_ENDSTOPS_INVERTING) == false) {
-//				//	break; // block unloading if no filament
-//				//}
-//
-//				active_extruder=1;
-//				allow_cold_extrudes(true);
-//				relative_mode = true;
-//
-//				destination[3] = -Unloading_part1_length + (axis_relative_modes[3] || relative_mode)*current_position[3];
-//				destination[0] = current_position[0];
-//				destination[1] = current_position[1];
-//				destination[2] = current_position[2]; 
-//				feedrate = Unloading_part1_feedrate_PVA;
-//				prepare_move();
-//
-//				Message_wait();
-//
-//				destination[3] = -Unloading_part2_length_left + (axis_relative_modes[3] || relative_mode)*current_position[3];
-//				destination[0] = current_position[0];
-//				destination[1] = current_position[1];
-//				destination[2] = current_position[2]; 
-//				feedrate = Unloading_part2_feedrate_PVA;  
-//				prepare_move();
-//
-//				Message_wait();
-//
-//				unloading_command = true;
-//
-//				destination[3] = -Unloading_part3_length + (axis_relative_modes[3] || relative_mode)*current_position[3];
-//				destination[0] = current_position[0];
-//				destination[1] = current_position[1];
-//				destination[2] = current_position[2]; 
-//				feedrate = Unloading_part3_feedrate_PVA;  
-//				prepare_move();
-//
-//				relative_mode = false;
-//
-//				break;
-//			}
-
+		//====== extrude and retract filament ======
 
 		case 1650: 
 			{// Extruding 20mm for the first extruder
-				float Distance_Load=4;
-				uint8_t sauvegarde_extruder = active_extruder;
-				float fr_charge = feedrate_Extrude_Retract;
+				uint8_t original_extruder = active_extruder;
+				float fr_charge = FEEDRATE_EXTRUDE_RETRACT;
 				
-				active_extruder=0;
-				relative_mode = true;
+				active_extruder = 0;
+				// relative_mode = true;
 				if(code_seen(CODE_PVA_IN_LOADING_UNLOADING)) {
-					fr_charge = feedrate_Extrude_PVA;
+					fr_charge = FEEDRATE_EXTRUDE_RETRACT_PVA;
+					Is_PVA_E0 = true;
 				}
-
-				destination[3] =  Distance_Load + (axis_relative_modes[3] || relative_mode)*current_position[3];
-				destination[0] = current_position[0];
-				destination[1] = current_position[1];
-				destination[2] = current_position[2];
-				feedrate = fr_charge; 
-				prepare_move();
-
-				active_extruder=sauvegarde_extruder;
-				relative_mode = false;
-
+				else {
+					Is_PVA_E0 = false;
+				}
+				
+				Moving_E(DISTANCE_EXTRUDE_RETRACT, fr_charge);
+				
+				active_extruder = original_extruder;
+				// relative_mode = false;
+				
 				break;
 			}
-
 
 		case 1651: 
 			{// Extruding 20mm for the second extruder
-				float Distance_Load=4;
-				uint8_t sauvegarde_extruder = active_extruder;
-				float fr_charge = feedrate_Extrude_Retract;
+				uint8_t original_extruder = active_extruder;
+				float fr_charge = FEEDRATE_EXTRUDE_RETRACT;
 				
-				active_extruder=1;
-				relative_mode = true;
+				active_extruder = 1;
+				// relative_mode = true;
 				if(code_seen(CODE_PVA_IN_LOADING_UNLOADING)) {
-					fr_charge = feedrate_Extrude_PVA;
+					fr_charge = FEEDRATE_EXTRUDE_RETRACT_PVA;
+					Is_PVA_E1 = true;
 				}
-
-				destination[3] =  Distance_Load + (axis_relative_modes[3] || relative_mode)*current_position[3];
-				destination[0] = current_position[0];
-				destination[1] = current_position[1];
-				destination[2] = current_position[2];
-				feedrate = fr_charge;
-				prepare_move();
-
-				active_extruder=sauvegarde_extruder;
-				relative_mode = false;
-
+				else {
+					Is_PVA_E1 = false;
+				}
+				
+				Moving_E(DISTANCE_EXTRUDE_RETRACT, fr_charge);
+				
+				active_extruder = original_extruder;
+				// relative_mode = false;
+				
 				break;
 			}
 
-
 		case 1652: 
 			{// Reversing 20mm for the first extruder, not in use in real
-				float Distance_Load=4;
-				uint8_t sauvegarde_extruder = active_extruder;
-				float fr_retract = feedrate_Extrude_Retract;
+				uint8_t original_extruder = active_extruder;
+				float fr_retract = FEEDRATE_EXTRUDE_RETRACT;
 				
-				active_extruder=0;
-				relative_mode = true;
+				active_extruder = 0;
+				// relative_mode = true;
 				if(code_seen(CODE_PVA_IN_LOADING_UNLOADING)) {
-					fr_retract = feedrate_Extrude_PVA;
+					fr_retract = FEEDRATE_EXTRUDE_RETRACT_PVA;
 				}
-
-				destination[3] = - Distance_Load + (axis_relative_modes[3] || relative_mode)*current_position[3];
-				destination[0] = current_position[0];
-				destination[1] = current_position[1];
-				destination[2] = current_position[2];
-				feedrate = fr_retract;
-				prepare_move();
-
-				active_extruder=sauvegarde_extruder;
-				relative_mode = false;
-
+				
+				Moving_E(-DISTANCE_EXTRUDE_RETRACT, fr_retract);
+				
+				active_extruder = original_extruder;
+				// relative_mode = false;
+				
 				break;
 			}
 
 		case 1653: 
 			{// Reversing 20mm for the second extruder, not in use in real
-				float Distance_Load=4;
-				uint8_t sauvegarde_extruder = active_extruder;
-				float fr_retract = feedrate_Extrude_Retract;
+				uint8_t original_extruder = active_extruder;
+				float fr_retract = FEEDRATE_EXTRUDE_RETRACT;
 				
-				active_extruder=1;
-				relative_mode = true;
+				active_extruder = 1;
+				// relative_mode = true;
 				if(code_seen(CODE_PVA_IN_LOADING_UNLOADING)) {
-					fr_retract = feedrate_Extrude_PVA;
+					fr_retract = FEEDRATE_EXTRUDE_RETRACT_PVA;
 				}
-
-				destination[3] = - Distance_Load + (axis_relative_modes[3] || relative_mode)*current_position[3];
-				destination[0] = current_position[0];
-				destination[1] = current_position[1];
-				destination[2] = current_position[2];
-				feedrate = fr_retract; 
-				prepare_move();
-
-				active_extruder=sauvegarde_extruder;
-				relative_mode = false;
-
+				
+				Moving_E(-DISTANCE_EXTRUDE_RETRACT, fr_retract);
+				
+				active_extruder = original_extruder;
+				// relative_mode = false;
+				
 				break;
 			}
 
-
-
-
-
-
-
-
-
-
+			//====== offset system ======
 
 		case 1660: 
-			{// Reversing 20mm for the second extruder
+			{
 				//#ifdef EEPROM_SETTINGS
 				//donn?es ? stocker entre -100 to 100 :
 
@@ -4467,10 +3706,10 @@ void process_commands()
 				}
 
 				if((offset_x_code_value>100)||(offset_x_code_value<-100)||(offset_y_code_value>100)||(offset_y_code_value<-100)) {
-					MYSERIAL.print("\n Error!! Invalid Input!!!!");
+					SERIAL_PROTOCOL("\n Error!! Invalid Input!!!!");
 				}
 				else if (change_offset_x + change_offset_y == 0) {
-					MYSERIAL.print("\n Error!! No Input!!!!");
+					SERIAL_PROTOCOL("\n Error!! No Input!!!!");
 				}
 				else
 				{
@@ -4483,8 +3722,8 @@ void process_commands()
 						int offset_x_write_e2prom=offset_x_code_value;
 						EEPROM_WRITE_VAR(position_offset_x_write_e2prom, offset_x_write_e2prom);
 
-						MYSERIAL.print("\n X=");
-						MYSERIAL.print(offset_x_write_e2prom);
+						SERIAL_PROTOCOL("\n X=");
+						SERIAL_PROTOCOL(offset_x_write_e2prom);
 					}
 
 					if (change_offset_y == 1) {
@@ -4496,8 +3735,8 @@ void process_commands()
 						int offset_y_write_e2prom=offset_y_code_value;
 						EEPROM_WRITE_VAR(position_offset_y_write_e2prom, offset_y_write_e2prom);
 
-						MYSERIAL.print("\n Y=");
-						MYSERIAL.print(offset_y_write_e2prom);
+						SERIAL_PROTOCOL("\n Y=");
+						SERIAL_PROTOCOL(offset_y_write_e2prom);
 					}
 
 					// return to original values for offset for preparing changing
@@ -4505,7 +3744,7 @@ void process_commands()
 					float extruder_offset_y_ori[2] = EXTRUDER_OFFSET_Y;
 					extruder_offset[X_AXIS][1] = extruder_offset_x_ori[1];
 					extruder_offset[Y_AXIS][1] = extruder_offset_y_ori[1];
-					Lecture_offset_E2PROM();
+					Read_offset_E2PROM();
 				}
 
 				break;
@@ -4539,7 +3778,7 @@ void process_commands()
 
 
 
-				MYSERIAL.print(offset_x_e2prom2);
+				SERIAL_PROTOCOL(offset_x_e2prom2);
 
 
 				break;	
@@ -4569,13 +3808,13 @@ void process_commands()
 				}
 
 
-				MYSERIAL.print(offset_y_e2prom2);
+				SERIAL_PROTOCOL(offset_y_e2prom2);
 
 
 				break;	
 			}	
 
-
+/* 
 		case 1702: 
 			{// Serial2 read cartridge
 
@@ -4596,7 +3835,7 @@ void process_commands()
 				//envoie_commande(Mifare_Select,length_Mifare_Select,2); 
 				//envoie_commande(Mifare_Authentication24,length_Mifare_Authentication24,2); 
 				envoie_commande(Mifare_Read1,length_Mifare_Read1,2); 
-				MYSERIAL.print("\n"); 
+				SERIAL_PROTOCOL("\n"); 
 
 
 
@@ -4623,99 +3862,95 @@ void process_commands()
 				//envoie_commande(Mifare_Select,length_Mifare_Select,3); 
 				//envoie_commande(Mifare_Authentication24,length_Mifare_Authentication24,2); 
 				envoie_commande(Mifare_Read1,length_Mifare_Read1,3);
-				MYSERIAL.print("\n");
+				SERIAL_PROTOCOL("\n");
 
 
 
 
 				break;
 			}
-
+ */
 
 		case 1900: 
 			{// Interruption of programme
 				quickStop(); 
-				Message_wait();			
+				Message_wait();
 
-				/////////////////////ici je rajoute des parties de d?veloppement/////////////////////////
-
-				Moving_Z_1();
+				// here I re-add the parts of development (just translation - PNI)
+				int nb_check = 50 * 60 / homing_feedrate[Z_AXIS];
+				
+				Moving_Z(50, homing_feedrate[Z_AXIS]);
 				//delay(15000);
-				for (int i = 0; i < 15; i++) {
+				for (int i = 1; i < nb_check; i++) { // let 1s in moving to write RFID (if possible)
 					if (READ(Z_MAX_PIN)^Z_ENDSTOPS_INVERTING) {
 						break;
 					}
 					delay(1000);
 				}
 				Message_wait();
-				ecrir_sur_RFID1();
-				ecrir_sur_RFID2();
+				Write_RFID1();
+				Write_RFID2();
 				Reverse_20mm();
-				//					if (Distance_Filament_E0 > 0) delay(10800);
-				//					if (Distance_Filament_E1 > 0) delay(10800);
 				Message_wait();
 				st_synchronize();
-				Message_wait();	 
-				Reinitialise_E0_E1_Quantity();
 				Message_wait();
-				Moving_X_Y();	
-				Message_wait();	
+				Reinitialize_E0_E1_Quantity(true);
+				Message_wait();
+				// Homing_head();
+				Center_head();
+				Message_wait();
 				Set_temperature_to_0Degree();
-				Message_wait();			
-
-				///////////////////////////////////////ici fin /////////////////////////////////////////////////
+				Message_wait();
+				// parts of development end
 
 				disable_e0();
 				disable_e1();
 				disable_e2();
 				fanSpeed = 0;
 
-
-
-
-
 				break;
-			}			
+			}
 
 		case 1901: 
 			{// Flush
 				quickStop2();
 
 				break;
-			}	
+			}
 
 
 		case 1902: 
 			{// Pause
 				// disable the write of RFID to make it stable (so also the reinitialisation)
-				saving_current_parameters();
+				Saving_current_parameters();
 				Message_wait();
-				Moving_Z_1();
+				
+				// move down platform first
+				int nb_check = 50 * 60 / homing_feedrate[Z_AXIS];
+				Moving_Z(50, homing_feedrate[Z_AXIS]);
 				//delay(15000);
-				for (int i = 0; i < 15; i++) {
+				for (int i = 1; i < nb_check; i++) { // let 1s in moving to write RFID (if possible)
 					if (READ(Z_MAX_PIN)^Z_ENDSTOPS_INVERTING) {
 						break;
 					}
 					delay(1000);
 				}
 				Message_wait();
-				//ecrir_sur_RFID();
+				
+				Write_RFID1();
+				Write_RFID2();
 				Message_wait();
 				Reverse_20mm();
-				//					SERIAL_PROTOCOL_F(Distance_Filament_E0,1);
-				//					SERIAL_PROTOCOL_F(Distance_Filament_E1,1);
-				//					if (Distance_Filament_E0 > 0) delay(10800);
-				//					if (Distance_Filament_E1 > 0) delay(10800);
-				Message_wait();
+				// SERIAL_PROTOCOL_F(Distance_Filament_E0,1);
+				// SERIAL_PROTOCOL_F(Distance_Filament_E1,1);
 				st_synchronize();
-				//					delay(18000);
 				Message_wait();
-				//Reinitialise_E0_E1_Quantity();
+				Reinitialize_E0_E1_Quantity(true);
+				Has_Paused_in_Print = true; // assign pause global variable after initialization
+				// Message_wait();
+				Homing_head();
 				Message_wait();
-				Moving_X_Y();
-				Message_wait();
-				return_current_parameters();
-				Message_wait();
+				// Return_current_parameters();
 				Set_temperature_to_0Degree();
 				Message_wait();
 
@@ -4728,204 +3963,61 @@ void process_commands()
 
 		case 1903 : 
 			{
-				// ranged the alignment and fixed bugs (by Peng on 20140708)
+				// ranged the alignment and fixed bugs (by PNI on 20140708)
 				// - Always extrude 2 filaments even when printing in 1 color
 				// - Reset target temperatures in resume
 				// - Improve to heat 2 nozzle in the same time when printing in 2 colors
-
-				Set_current_paramters_2();
-
-				uint8_t sauvegarde_extruder = tmp_extruder;
-				setTargetHotend(Pause_current_position[T0_parm], 0);
-				TMP0_Target = Pause_current_position[T0_parm];
-				setTargetHotend(Pause_current_position[T1_parm], 1);
-				TMP1_Target = Pause_current_position[T1_parm];
-
-				// For T0
-				tmp_extruder=0;
-
-				if (Pause_current_position[T0_parm] > 0)
-				{
-					LCD_MESSAGEPGM(MSG_HEATING);
-#ifdef AUTOTEMP
-					autotemp_enabled=false;
-#endif
-#ifdef AUTOTEMP
-					autotemp_min=Pause_current_position[T0_parm];
-					if (code_seen('B')) autotemp_max=code_value();
-					if (code_seen('F')) 
-					{
-						autotemp_factor=code_value();
-						autotemp_enabled=true;
-					}
-#endif
-
-					setWatch();
-					codenum = millis(); 
-
-					/* See if we are heating up or cooling down */
-					bool target_direction = isHeatingHotend(tmp_extruder); // true if heating, false if cooling
-
-#ifdef TEMP_RESIDENCY_TIME
-					long residencyStart;
-					residencyStart = -1;
-					/* continue to loop until we have reached the target temp   
-					_and_ until TEMP_RESIDENCY_TIME hasn't passed since we reached it */
-					while((residencyStart == -1) ||
-						(residencyStart >= 0 && (((unsigned int) (millis() - residencyStart)) < (TEMP_RESIDENCY_TIME * 1000UL))) ) {
-#else
-					while ( target_direction ? (isHeatingHotend(tmp_extruder)) : (isCoolingHotend(tmp_extruder)&&(CooldownNoWait==false)) ) {
-#endif //TEMP_RESIDENCY_TIME
-						if( (millis() - codenum) > 1000UL )
-						{ //Print Temp Reading and remaining time every 1 second while heating up/cooling down
-							SERIAL_PROTOCOLPGM("T:");
-							SERIAL_PROTOCOL_F(degHotend(tmp_extruder),1); 
-							SERIAL_PROTOCOLPGM(" E:");
-							SERIAL_PROTOCOL((int)tmp_extruder); 
-#ifdef TEMP_RESIDENCY_TIME
-							SERIAL_PROTOCOLPGM(" W:");
-							if(residencyStart > -1)
-							{
-								codenum = ((TEMP_RESIDENCY_TIME * 1000UL) - (millis() - residencyStart)) / 1000UL;
-								SERIAL_PROTOCOLLN( codenum );
-							}
-							else 
-							{
-								SERIAL_PROTOCOLLN( "?" );
-							}
-#else
-							SERIAL_PROTOCOLLN("");
-#endif
-							codenum = millis();
-						}
-						manage_heater();
-						Read_Power_Button();
-						CheckTemperatureToActivateFan();
-						manage_inactivity();
-						lcd_update();
-#ifdef TEMP_RESIDENCY_TIME
-						/* start/restart the TEMP_RESIDENCY_TIME timer whenever we reach target temp for the first time
-						or when current temp falls outside the hysteresis after target temp was reached */
-						if ((residencyStart == -1 &&  target_direction && (degHotend(tmp_extruder) >= (degTargetHotend(tmp_extruder)-TEMP_WINDOW))) ||
-							(residencyStart == -1 && !target_direction && (degHotend(tmp_extruder) <= (degTargetHotend(tmp_extruder)+TEMP_WINDOW))) ||
-							(residencyStart > -1 && labs(degHotend(tmp_extruder) - degTargetHotend(tmp_extruder)) > TEMP_HYSTERESIS) ) 
-						{
-							residencyStart = millis();
-						}
-#endif //TEMP_RESIDENCY_TIME
-					}
-					LCD_MESSAGEPGM(MSG_HEATING_COMPLETE);
-					starttime=millis();
-					previous_millis_cmd = millis();
-
-					Extrude_20mm_first();
-					delay(1200);
+				bool resume_E0 = (Pause_current_position[T0_parm] > 0); // use EXTRUDE_MINTEMP?
+				bool resume_E1 = (Pause_current_position[T1_parm] > 0); // use EXTRUDE_MINTEMP?
+				
+				if (resume_E0 == true) {
+					setTargetHotend(Pause_current_position[T0_parm], 0);
+					TMP0_Target = Pause_current_position[T0_parm];
 				}
-				tmp_extruder = sauvegarde_extruder;
-
-
-
-				// For T1
-				tmp_extruder=1;
-
-				if (Pause_current_position[T1_parm] > 0)
-				{
-					LCD_MESSAGEPGM(MSG_HEATING);   
-#ifdef AUTOTEMP
-					autotemp_enabled=false;
-#endif
-#ifdef AUTOTEMP
-					autotemp_min=Pause_current_position[T1_parm];
-					if (code_seen('B')) autotemp_max=code_value();
-					if (code_seen('F')) 
-					{
-						autotemp_factor=code_value();
-						autotemp_enabled=true;
-					}
-#endif
-
-					setWatch();
-					codenum = millis(); 
-
-					/* See if we are heating up or cooling down */
-					bool target_direction = isHeatingHotend(tmp_extruder); // true if heating, false if cooling
-
-#ifdef TEMP_RESIDENCY_TIME
-					long residencyStart;
-					residencyStart = -1;
-					/* continue to loop until we have reached the target temp   
-					_and_ until TEMP_RESIDENCY_TIME hasn't passed since we reached it */
-					while((residencyStart == -1) ||
-						(residencyStart >= 0 && (((unsigned int) (millis() - residencyStart)) < (TEMP_RESIDENCY_TIME * 1000UL))) ) {
-#else
-					while ( target_direction ? (isHeatingHotend(tmp_extruder)) : (isCoolingHotend(tmp_extruder)&&(CooldownNoWait==false)) ) {
-#endif //TEMP_RESIDENCY_TIME
-						if( (millis() - codenum) > 1000UL )
-						{ //Print Temp Reading and remaining time every 1 second while heating up/cooling down
-							SERIAL_PROTOCOLPGM("T:");
-							SERIAL_PROTOCOL_F(degHotend(tmp_extruder),1); 
-							SERIAL_PROTOCOLPGM(" E:");
-							SERIAL_PROTOCOL((int)tmp_extruder); 
-#ifdef TEMP_RESIDENCY_TIME
-							SERIAL_PROTOCOLPGM(" W:");
-							if(residencyStart > -1)
-							{
-								codenum = ((TEMP_RESIDENCY_TIME * 1000UL) - (millis() - residencyStart)) / 1000UL;
-								SERIAL_PROTOCOLLN( codenum );
-							}
-							else 
-							{
-								SERIAL_PROTOCOLLN( "?" );
-							}
-#else
-							SERIAL_PROTOCOLLN("");
-#endif
-							codenum = millis();
-						}
-						manage_heater();
-						Read_Power_Button();
-						CheckTemperatureToActivateFan();
-						manage_inactivity();
-						lcd_update();
-#ifdef TEMP_RESIDENCY_TIME
-						/* start/restart the TEMP_RESIDENCY_TIME timer whenever we reach target temp for the first time
-						or when current temp falls outside the hysteresis after target temp was reached */
-						if ((residencyStart == -1 &&  target_direction && (degHotend(tmp_extruder) >= (degTargetHotend(tmp_extruder)-TEMP_WINDOW))) ||
-							(residencyStart == -1 && !target_direction && (degHotend(tmp_extruder) <= (degTargetHotend(tmp_extruder)+TEMP_WINDOW))) ||
-							(residencyStart > -1 && labs(degHotend(tmp_extruder) - degTargetHotend(tmp_extruder)) > TEMP_HYSTERESIS) ) 
-						{
-							residencyStart = millis();
-						}
-#endif //TEMP_RESIDENCY_TIME
-					}
-					LCD_MESSAGEPGM(MSG_HEATING_COMPLETE);
-					starttime=millis();
-					previous_millis_cmd = millis();
-
-					Extrude_20mm_second();
-					delay(1200);
+				if (resume_E1 == true) {
+					setTargetHotend(Pause_current_position[T1_parm], 1);
+					TMP1_Target = Pause_current_position[T1_parm];
 				}
-				tmp_extruder = sauvegarde_extruder;
-
+				
+				// Set_current_paramters();
+				
+				// resume head first
+				MovingTo_head(Pause_current_position[X_AXIS], Pause_current_position[Y_AXIS], homing_feedrate[X_AXIS]); // X_AXIS value equals Y_AXIS one
+				Message_wait();
+				
+				// start to wait temperature
+				if (resume_E0 == true) {
+					Set_to_Temperature_in_Resume(0, Pause_current_position[T0_parm]);
+				}
+				if (resume_E1 == true) {
+					Set_to_Temperature_in_Resume(1, Pause_current_position[T1_parm]);
+				}
+				Message_wait();
+				
+				// extrude for compensation of retraction
+				Extrude_20mm_in_Resume(resume_E0, resume_E1);
+				st_synchronize();
+				Message_wait();
+				
+				// resume platform at last
+				MovingTo_Z(Pause_current_position[Z_AXIS], homing_feedrate[Z_AXIS]);
+				Message_wait();
+				
 				break;
 			}
 
-
-
 		case 1904: 
 			{// Motionless end.
-				ecrir_sur_RFID1();
-				ecrir_sur_RFID2();
+				Write_RFID1();
+				Write_RFID2();
 				Reverse_20mm();
-				//					if (Distance_Filament_E0 > 0) delay(10800);
-				//					if (Distance_Filament_E1 > 0) delay(10800);
 				Message_wait();
 				st_synchronize();
 				Message_wait();
-				Reinitialise_E0_E1_Quantity();
+				Reinitialize_E0_E1_Quantity(true);
 				Message_wait();
-				//	Set_temperature_to_0Degree();
-				//	Message_wait();
+				// Set_temperature_to_0Degree();
+				// Message_wait();
 				disable_e0();
 				disable_e1();
 				disable_e2();
@@ -4934,45 +4026,42 @@ void process_commands()
 			}
 		case 1905: 
 			{// Plateform rise.
-
-
-
-				float Distance_Z_Cartridge=250;	
-				relative_mode = true;
-				float feedrate_Z_cartridge = 500;
-
-				destination[2] = Distance_Z_Cartridge + (axis_relative_modes[2] || relative_mode)*current_position[2];
-				destination[0] = current_position[0];
-				destination[1] = current_position[1];
-				destination[3] = current_position[3];
-				feedrate = feedrate_Z_cartridge; 
-				prepare_move(); 
-				delay(1000);
-
-
-				//Second mouvement
-
-				Distance_Z_Cartridge=70;
-				destination[2] = -Distance_Z_Cartridge + (axis_relative_modes[2] || relative_mode)*current_position[2];
-				destination[0] = current_position[0];
-				destination[1] = current_position[1];
-				destination[3] = current_position[3];
-				feedrate = feedrate_Z_cartridge; 
-				prepare_move(); 
-				delay(1000);
-
-
-				relative_mode = false;
-
+				// first move to down platform
+				Moving_Z(150, homing_feedrate[Z_AXIS]); // note: why 250 here, we have only 150mm on Z axis - PNI
+				// delay(1000);
+				
+				// second move to raise platform just to specified position
+				Moving_Z(-70, homing_feedrate[Z_AXIS]);
+				// delay(1000);
+				
 				break;
 			}
+
+		case 1906:
+			{ // move down platform 5mm at speed of homing
+				Moving_Z(5, homing_feedrate[Z_AXIS]);
+				
+				break;
+			}
+
+		case 1907:
+			{ // return consumption quantities saved in printer
+				SERIAL_PROTOCOL("E0:");
+				SERIAL_PROTOCOL(Distance_Consumption_E0);
+				SERIAL_PROTOCOL("\nE1:");
+				SERIAL_PROTOCOL(Distance_Consumption_E1);
+				
+				break;
+			}
+
 		case 2000: 
 			{// Begin printing
-				Reinitialise_E0_E1_Quantity();
+				Has_Paused_in_Print = false;
+				Reinitialize_E0_E1_Quantity(false);
 				// If only one extruder is needed
 				Set_temperature_to_0Degree();
-				// reset extruder to avoid wrong temperature assignment in mono-color model - Peng
-				active_extruder=0;
+				// reset extruder to avoid wrong temperature assignment in mono-color model - PNI
+				active_extruder = 0;
 				disable_x();
 				disable_y();
 				disable_z();
@@ -4985,27 +4074,26 @@ void process_commands()
 		case 2001: 
 			{// End
 
-
-				Moving_Z_2();
+				int nb_check = 150 * 60 / homing_feedrate[Z_AXIS];
+				Moving_Z(150, homing_feedrate[Z_AXIS]);
 				//delay(30000);
-				for (int i = 0; i < 30; i++) {
+				for (int i = 1; i < nb_check; i++) { // let 1s in moving to write RFID (if possible)
 					if (READ(Z_MAX_PIN)^Z_ENDSTOPS_INVERTING) {
 						break;
 					}
-					delay(1000); 
+					delay(1000);
 				}
 				Message_wait();
-				ecrir_sur_RFID1(); 
-				ecrir_sur_RFID2();
+				Write_RFID1();
+				Write_RFID2();
 				Reverse_20mm();
-				//					if (Distance_Filament_E0 > 0) delay(10800);
-				//					if (Distance_Filament_E1 > 0) delay(10800);
 				Message_wait();
 				st_synchronize();
 				Message_wait();
-				Reinitialise_E0_E1_Quantity();
+				Reinitialize_E0_E1_Quantity(true);
 				Message_wait();
-				Moving_X_Y();
+				// Homing_head();
+				Center_head();
 				Message_wait();
 				Set_temperature_to_0Degree();
 				Message_wait();
@@ -5056,53 +4144,23 @@ void process_commands()
 
 				break; 
 			}
-		//case 9003: 
-		//	{// Carrée_function
+/* 
+		case 9003: 
+			{// Carrée_function
 
-		//		//Procedure_test_Zim();
+				//Procedure_test_Zim();
 
-		//		break; 
-		//	}
+				break; 
+			}
 		case 9100:
 			{
 
 				premier_transport = true;
 
 				break;
-			}					
-		//case 9999: // Test debug
-		//	{
-		//		MYSERIAL.print("#");
-		//		MYSERIAL.print(READ(PRIVATE_ENDSTOPS1), BIN);
-		//		MYSERIAL.print("#");
-		//		MYSERIAL.print(E_ENDSTOPS_INVERTING, BIN);
-		//		MYSERIAL.print("#");
-		//		MYSERIAL.print(READ(PRIVATE_ENDSTOPS1) ^ E_ENDSTOPS_INVERTING, BIN);
-		//		MYSERIAL.print("#");
+			}
+ */
 
-		//		active_extruder=1;
-		//		allow_cold_extrudes(true);
-		//		relative_mode = true;
-
-		//		unloading_command = true;
-
-		//		destination[3] = -Unloading_part3_length + (axis_relative_modes[3] || relative_mode)*current_position[3];
-		//		destination[0] = current_position[0];
-		//		destination[1] = current_position[1];
-		//		destination[2] = current_position[2]; 
-		//		feedrate = Unloading_part3_feedrate;  
-		//		prepare_move();
-
-		//		relative_mode = false;
-
-		//		st_synchronize();
-		//		disable_e0();
-		//		disable_e1();
-		//		disable_e2();
-		//		finishAndDisableSteppers();
-
-		//		break;
-		//	}					
 		default :	// By default
 			{
 				SERIAL_ECHOPGM(MSG_UNKNOWN_COMMAND);
@@ -5183,7 +4241,7 @@ void ClearToSend()
 	if(fromsd[bufindr])
 		return;
 #endif //SDSUPPORT
-	MYSERIAL.print("\n");
+	SERIAL_PROTOCOL("\n");
 	SERIAL_PROTOCOLLNPGM(MSG_OK); 
 }
 
@@ -5358,6 +4416,7 @@ void controllerFan()
 }
 #endif
 
+//DIY function start
 #ifdef EXTRUDERFAN_PIN
 unsigned long lastExtruderCheck = 0;
 
@@ -5379,19 +4438,18 @@ void extruderFan()
 }
 #endif
 
-
 void Fonction_Transport()
 {
 
 #ifdef Fonction_transport_Define 
 
 #if (Endstop_voyage > -1)
-	bool etat_endstop_voyage=(READ(Endstop_voyage) != Voyage_ENDSTOPS_INVERTING);
+	bool etat_endstop_voyage=(READ(Endstop_voyage) != VOYAGE_ENDSTOPS_INVERTING);
 	if((premier_transport==true)&&(!etat_endstop_voyage))
 	{
 		//premier_transport = false;
 
-		MYSERIAL.print("\n Fonction transport \n");		
+		SERIAL_PROTOCOL("\n Fonction transport \n");		
 		Moving_X_Y_Z_Voyage(); 
 		delay(10000);
 
@@ -5402,21 +4460,18 @@ void Fonction_Transport()
 
 }	 
 
-
-
-
 void Function_Z_Movement()
 {
 
 #ifdef Fonction_Z_Movement_Define
 
 #if (Endstop_Z_Movement > -1)
-	bool etat_endstop_z_movement=(READ(Endstop_Z_Movement) != Z_Movement_ENDSTOPS_INVERTING);
-	//SERIAL_PROTOCOLLN(((READ(Endstop_voyage)^Voyage_ENDSTOPS_INVERTING)?"filament":"no filament"));
+	bool etat_endstop_z_movement=(READ(Endstop_Z_Movement) != Z_MOVEMENT_ENDSTOPS_INVERTING);
+	//SERIAL_PROTOCOLLN(((READ(Endstop_voyage)^VOYAGE_ENDSTOPS_INVERTING)?"filament":"no filament"));
 	if(!etat_endstop_z_movement)
 	{	
 
-		MYSERIAL.print("\n Fonction Z \n");
+		SERIAL_PROTOCOL("\n Fonction Z \n");
 		Moving_Z_movement(); 
 		delay(10000);
 
@@ -5427,23 +4482,17 @@ void Function_Z_Movement()
 
 }
 
-
-
-
-
-
-
-void Function_Carre ()
+void Function_Carre()
 {
 
 #ifdef Fonction_Carre_Define
 
 #if (Endstop_Carre  > -1)
-	bool etat_endstop_carre=(READ(Endstop_Carre ) != Carre_ENDSTOPS_INVERTING);
-	//SERIAL_PROTOCOLLN(((READ(Endstop_voyage)^Voyage_ENDSTOPS_INVERTING)?"filament":"no filament"));
+	bool etat_endstop_carre=(READ(Endstop_Carre ) != CARRE_ENDSTOPS_INVERTING);
+	//SERIAL_PROTOCOLLN(((READ(Endstop_voyage)^VOYAGE_ENDSTOPS_INVERTING)?"filament":"no filament"));
 	if(!etat_endstop_carre)
 	{	
-		MYSERIAL.print("\n Fonction Carr� \n");
+		SERIAL_PROTOCOL("\n Fonction Carr� \n");
 		Moving_Carre(); 
 
 		delay(10000);
@@ -5455,29 +4504,17 @@ void Function_Carre ()
 
 }
 
-
-
-
-
-
 void Read_Power_Button()
 { 
 	// read the value of the Kill_button
-
 #ifdef Power_Button
-
-
-
 	float voltage_value = VoltageButton();
 
-
-
-	if (voltage_value < 37)
+	if (voltage_value < 20) // import changes in SVN 55 by MCH
 	{
 		Read_button_1 = 0;	
 		Read_button_2 = 0;	
 	}	
-
 
 	if ((voltage_value>37)&&(Read_button_1>0))
 	{
@@ -5494,26 +4531,15 @@ void Read_Power_Button()
 		delay(100);	
 	}
 
-
-
-
-
 	if( (Read_button_2 - Read_button_1) >  max_time_pushing ) 
 		//if( (Read_button_2-Read_button_1) >  4000 ) 
 	{
-
-
-		MYSERIAL.print("\n");
-		MYSERIAL.print("Je rentre");
-		MYSERIAL.print("\n"); 
+		SERIAL_PROTOCOL("\n");
+		SERIAL_PROTOCOL("Je rentre");
+		SERIAL_PROTOCOL("\n"); 
 		Read_button_1 = 0;	
 		Read_button_2 = 0;	
 		//delay(1000);
-
-
-
-
-
 
 		//if(max_time_pushing) 
 		//{
@@ -5523,79 +4549,60 @@ void Read_Power_Button()
 		// Tuer la Zim!!
 		kill_Zim();  
 		//}
-
-	}	
-
-
-
+	}
 #endif
-
-
-
-
-
 }
+//DIY end
 
-
-
-void manage_inactivity() 
-{ 
-
-
-	if( (millis() - previous_millis_cmd) >  max_inactive_time ) 
-		if(max_inactive_time) 
-		{
-
-			//kill(); 
-		}	  
-		if(stepper_inactive_time)  {
-			if( (millis() - previous_millis_cmd) >  stepper_inactive_time ) 
-			{
-				if(blocks_queued() == false) {
-					//SERIAL_ECHOLNPGM("\n LOW POWER SUPPLY\n");
-
+void manage_inactivity() {
+	if(max_inactive_time) {
+		if( (millis() - previous_millis_cmd) >  max_inactive_time ) {
+			// kill(); 
+		}
+	}
+	
+	if(stepper_inactive_time) {
+		if( (millis() - previous_millis_cmd) >  stepper_inactive_time ) {
+			if(blocks_queued() == false) {
+				//SERIAL_ECHOLNPGM("\n LOW POWER SUPPLY\n");
 #ifdef LOW_POWER_STANDBY
-
-					if ((degHotend(0)> 180 ) || (degHotend(1)> 180 ))
-					{		
-						//					ecrir_sur_RFID1();
-						//					ecrir_sur_RFID2();	
-						Reverse_20mm();					
-						Reinitialise_E0_E1_Quantity();	
-						Moving_Z_2();
-						Moving_X_Y();
-						Set_temperature_to_0Degree();
-					}
-
+				if ((degHotend(0) > EXTRUDE_MINTEMP) || (degHotend(1) > EXTRUDE_MINTEMP)) {
+					// Write_RFID1();
+					// Write_RFID2();
+					Reverse_20mm();
+					Reinitialize_E0_E1_Quantity(false);
+					Moving_Z(150, homing_feedrate[Z_AXIS]);
+					Homing_head();
+					Set_temperature_to_0Degree();
+				}
 #endif
-					disable_x();
-					disable_y();
-					disable_z();
-					disable_e0();
-					disable_e1();
-					disable_e2();
-				}
+				disable_x();
+				disable_y();
+				disable_z();
+				disable_e0();
+				disable_e1();
+				disable_e2();
 			}
-		} 
-
-		// Deactivate extruder motors
-
-		if(extruder_inactive_time)  {
-			if( (millis() - previous_millis_cmd) >  extruder_inactive_time) {
-				if(blocks_queued() == false) {
-					disable_e0();
-					disable_e1();
-					disable_e2();
-				}
+		}
+	}
+	
+	// Deactivate extruder motors
+	if(extruder_inactive_time) {
+		if( (millis() - previous_millis_cmd) >  extruder_inactive_time) {
+			if(blocks_queued() == false) {
+				disable_e0();
+				disable_e1();
+				disable_e2();
 			}
-		} 
+		}
+	} 
 
 #if( KILL_PIN>-1 )
-		if( 0 == READ(KILL_PIN) )
-			kill(); 
+	if( 0 == READ(KILL_PIN) )
+		kill(); 
 #endif
 #ifdef CONTROLLERFAN_PIN 
-		controllerFan(); //Check if fan should be turned on to cool stepper drivers down
+	controllerFan(); //Check if fan should be turned on to cool stepper drivers down
 #endif
 #ifdef EXTRUDER_RUNOUT_PREVENT
 		if( (millis() - previous_millis_cmd) >  EXTRUDER_RUNOUT_SECONDS*1000 ) 
@@ -5619,8 +4626,7 @@ void manage_inactivity()
 			check_axes_activity();
 }     
 
-void kill()
-{
+void kill() {
 	cli(); // Stop interrupts
 	disable_heater();
 
@@ -5639,19 +4645,7 @@ void kill()
 	while(1) { /* Intentionally left empty */ } // Wait for reset
 }
 
-
-
-
-
-
-
-
-
-
-
-
-void Stop()
-{
+void Stop() {
 	disable_heater();
 	if(Stopped == false) {
 		Stopped = true;

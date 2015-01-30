@@ -315,39 +315,41 @@
 // FC 20140820 Reduce the speed of loading and unloading
 // PNI 20140921 reduce 20mm according to Florent + Eric
 
-const float Distance_Loading_left=1440; //mm
-const float Distance_Loading_right=1240; //mm
-const float feedrate_Loading=1000; //mm/mn
-const float feedrate_Loading_PVA=500; //mm/mn
-const float Distance_Critical_Loading=50; //mm
-const float feedrate_Critical_Loading=500; //mm/mn
-const float feedrate_Critical_Loading_PVA=100; //mm/mn
-const float feedrate_Extrude_Retract=1000; //mm/mn
-const float feedrate_Extrude_PVA=50; //mm/mn, attention, this value doesn't cover PVA auto retract speed after print and charge speed in resume
+#define DISTANCE_LOADING_LEFT			1440	//mm
+#define DISTANCE_LOADING_RIGHT			1240	//mm
+#define FEEDRATE_LOADING				1000	//mm
+#define FEEDRATE_LOADING_PVA			500		//mm/mn
+#define DISTANCE_CRITICAL_LOADING		50		//mm
+#define FEEDRATE_CRITICAL_LOADING		500		//mm/mn
+#define FEEDRATE_CRITICAL_LOADING_PVA	100		//mm/mn
+#define FEEDRATE_EXTRUDE_RETRACT		1000	//mm/mn
+#define FEEDRATE_EXTRUDE_RETRACT_PVA	50		//mm/mn
+
+#define DISTANCE_EXTRUDE_RETRACT	4
 
 //Unloading
 
-const float Unloading_part1_length = 100; // mm
-const float Unloading_part1_feedrate = 2000; // mm/min
-const float Unloading_part1_feedrate_PVA = 500; // mm/min
-const float Unloading_part2_length_left = 1330; // mm (never reached - stopped either by endstop or by timeout)
-const float Unloading_part2_length_right = 1130; // mm (never reached - stopped either by endstop or by timeout)
-const float Unloading_part2_feedrate = 1000; // mm/min
-const float Unloading_part2_feedrate_PVA = 500; // mm/min
-const float Unloading_part3_length = 500; // mm (never reached - stopped either by endstop or by timeout)
-const float Unloading_part3_feedrate = 1000; // mm/min
-const float Unloading_part3_feedrate_PVA = 500; // mm/min
+#define UNLOADING_PART1_LENGTH			100		// mm
+#define UNLOADING_PART1_FEEDRATE		2000	// mm/mn
+#define UNLOADING_PART1_FEEDRATE_PVA	500		// mm/mn
+#define UNLOADING_PART2_LENGTH_LEFT		1330	// mm
+#define UNLOADING_PART2_LENGTH_RIGHT	1130	// mm
+#define UNLOADING_PART2_FEEDRATE		1000	// mm/mn
+#define UNLOADING_PART2_FEEDRATE_PVA	500		// mm/mn
+#define UNLOADING_PART3_LENGTH			500		// mm
+#define UNLOADING_PART3_FEEDRATE		1000	// mm/mn
+#define UNLOADING_PART3_FEEDRATE_PVA	500		// mm/mn
 
-#define CODE_PVA_IN_LOADING_UNLOADING 'P'
+#define CODE_PVA_IN_LOADING_UNLOADING	'P'
 
 // The pullups are needed if you directly connect a mechanical endswitch between the signal and ground pins.
-const bool X_ENDSTOPS_INVERTING = false; // set to true to invert the logic of the endstops. 
-const bool Y_ENDSTOPS_INVERTING = false; // set to true to invert the logic of the endstops. 
-const bool Z_ENDSTOPS_INVERTING = false; // set to true to invert the logic of the endstops. 
-const bool E_ENDSTOPS_INVERTING = false; // set to true to invert the logic of the endstops. 
-const bool Voyage_ENDSTOPS_INVERTING = false; // set to true to invert the logic of the endstops. 
-const bool Z_Movement_ENDSTOPS_INVERTING = false; // set to true to invert the logic of the endstops.
-const bool Carre_ENDSTOPS_INVERTING = false; // set to true to invert the logic of the endstops.  
+#define X_ENDSTOPS_INVERTING			false // set to true to invert the logic of the endstops.
+#define Y_ENDSTOPS_INVERTING			false // set to true to invert the logic of the endstops.
+#define Z_ENDSTOPS_INVERTING			false // set to true to invert the logic of the endstops.
+#define E_ENDSTOPS_INVERTING			false // set to true to invert the logic of the endstops.
+#define VOYAGE_ENDSTOPS_INVERTING		false // set to true to invert the logic of the endstops.
+#define Z_MOVEMENT_ENDSTOPS_INVERTING	false // set to true to invert the logic of the endstops.
+#define CARRE_ENDSTOPS_INVERTING		false // set to true to invert the logic of the endstops.
 
 //#define DISABLE_MAX_ENDSTOPS
 

@@ -70,54 +70,54 @@
 //#define MYPGM(s)  (__extension__({static char __c[] __attribute__((__progmem__)) = (s); &__c[0];}))  //This is the normal behaviour
 //#define MYPGM(s)  (__extension__({static prog_char __c[]  = (s); &__c[0];})) //this does not work but hides the warnings
 
-#ifdef RFIDSUPPORT
-#define SERIAL_PROTOCOL(x) { MYSERIAL.print(x); MYSERIAL2.print(x); MYSERIAL3.print(x); };
-#else
-#define SERIAL_PROTOCOL(x) MYSERIAL.print(x);
-#endif
+// #ifdef RFIDSUPPORT
+// #define SERIAL_PROTOCOL(x) { MYSERIAL.print(x); MYSERIAL2.print(x); MYSERIAL3.print(x); };
+// #else
+#define SERIAL_PROTOCOL(x) MYSERIAL.print(x)
+// #endif
 
-#ifdef RFIDSUPPORT
-#define SERIAL_PROTOCOL_F(x, y) { MYSERIAL.print(x, y); MYSERIAL2.print(x, y); MYSERIAL3.print(x, y); };
-#else
-#define SERIAL_PROTOCOL_F(x, y) MYSERIAL.print(x, y);
-#endif
+// #ifdef RFIDSUPPORT
+// #define SERIAL_PROTOCOL_F(x, y) { MYSERIAL.print(x, y); MYSERIAL2.print(x, y); MYSERIAL3.print(x, y); };
+// #else
+#define SERIAL_PROTOCOL_F(x, y) MYSERIAL.print(x, y)
+// #endif
 
-#ifdef RFIDSUPPORT
-#define SERIAL_PROTOCOLPGM(x) { serialprintPGM(MYPGM(x)); serialprintPGM2(MYPGM(x)); serialprintPGM3(MYPGM(x));};
-#else
-#define SERIAL_PROTOCOLPGM(x) serialprintPGM(MYPGM(x));
-#endif
+// #ifdef RFIDSUPPORT
+// #define SERIAL_PROTOCOLPGM(x) { serialprintPGM(MYPGM(x)); serialprintPGM2(MYPGM(x)); serialprintPGM3(MYPGM(x));};
+// #else
+#define SERIAL_PROTOCOLPGM(x) serialprintPGM(MYPGM(x))
+// #endif
 
-#ifdef RFIDSUPPORT
-#define SERIAL_PROTOCOLLN(x) { MYSERIAL.print(x); MYSERIAL.write('\n'); MYSERIAL2.print(x); MYSERIAL2.write('\n'); MYSERIAL3.print(x); MYSERIAL3.write('\n');};
-#else
+// #ifdef RFIDSUPPORT
+// #define SERIAL_PROTOCOLLN(x) { MYSERIAL.print(x); MYSERIAL.write('\n'); MYSERIAL2.print(x); MYSERIAL2.write('\n'); MYSERIAL3.print(x); MYSERIAL3.write('\n');};
+// #else
 #define SERIAL_PROTOCOLLN(x) { MYSERIAL.print(x); MYSERIAL.write('\n'); }
-#endif
+// #endif
 
-#ifdef RFIDSUPPORT
-#define SERIAL_PROTOCOLLNPGM(x) { serialprintPGM(MYPGM(x)); serialprintPGM2(MYPGM(x)); serialprintPGM3(MYPGM(x)); MYSERIAL.write('\n'); MYSERIAL2.write('\n'); MYSERIAL3.write('\n');}
-#else
+// #ifdef RFIDSUPPORT
+// #define SERIAL_PROTOCOLLNPGM(x) { serialprintPGM(MYPGM(x)); serialprintPGM2(MYPGM(x)); serialprintPGM3(MYPGM(x)); MYSERIAL.write('\n'); MYSERIAL2.write('\n'); MYSERIAL3.write('\n');}
+// #else
 #define SERIAL_PROTOCOLLNPGM(x) { serialprintPGM(MYPGM(x)); MYSERIAL.write('\n'); }
-#endif
+// #endif
 
 
 const char errormagic[] PROGMEM ="Error:";
 const char echomagic[] PROGMEM ="echo:";
-#ifdef RFIDSUPPORT
-#define SERIAL_ERROR_START { serialprintPGM(errormagic); serialprintPGM2(errormagic); serialprintPGM3(errormagic);}
-#else
+// #ifdef RFIDSUPPORT
+// #define SERIAL_ERROR_START { serialprintPGM(errormagic); serialprintPGM2(errormagic); serialprintPGM3(errormagic);}
+// #else
 #define SERIAL_ERROR_START serialprintPGM(errormagic);
-#endif
+// #endif
 #define SERIAL_ERROR(x) SERIAL_PROTOCOL(x)
 #define SERIAL_ERRORPGM(x) SERIAL_PROTOCOLPGM(x)
 #define SERIAL_ERRORLN(x) SERIAL_PROTOCOLLN(x)
 #define SERIAL_ERRORLNPGM(x) SERIAL_PROTOCOLLNPGM(x)
 
-#ifdef RFIDSUPPORT
-#define SERIAL_ECHO_START { serialprintPGM(echomagic); serialprintPGM2(echomagic); serialprintPGM3(echomagic); }
-#else
+// #ifdef RFIDSUPPORT
+// #define SERIAL_ECHO_START { serialprintPGM(echomagic); serialprintPGM2(echomagic); serialprintPGM3(echomagic); }
+// #else
 #define SERIAL_ECHO_START serialprintPGM(echomagic);
-#endif
+// #endif
 #define SERIAL_ECHO(x) SERIAL_PROTOCOL(x)
 #define SERIAL_ECHOPGM(x) SERIAL_PROTOCOLPGM(x)
 #define SERIAL_ECHOLN(x) SERIAL_PROTOCOLLN(x)
@@ -137,6 +137,7 @@ FORCE_INLINE void serialprintPGM(const char *str)
   }
 }
 
+/* 
 #ifdef RFIDSUPPORT
 // things to write to bluetooth from Programmemory. saves 400 to 2k of RAM???
 // actually reproduces serialprintPGM that's all
@@ -164,7 +165,7 @@ FORCE_INLINE void serialprintPGM3(const char *str)
   }
 }
 #endif
-
+ */
 
 
 void get_command();
@@ -283,10 +284,10 @@ extern unsigned long stoptime;
 
 // Handling multiple extruders pins
 extern uint8_t active_extruder;
-extern bool unloading_critical_state;
+// extern bool unloading_critical_state;
 extern bool unloading_command;
 extern byte TAG_RFID_E0[16];
 extern byte TAG_RFID_E1[16];
-extern bool Desactiver_interruption;
+// extern bool Desactiver_interruption;
 
 #endif
