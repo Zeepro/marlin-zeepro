@@ -1703,6 +1703,9 @@ void process_commands()
 				}
 			}
 			break;
+		case 21:
+			// do nothing here to avoid an error message (printer is always in mm unit)
+			break;
 
 
 			// Par Deafault : On renvoit toujours Unknown Command
