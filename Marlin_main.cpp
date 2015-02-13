@@ -48,7 +48,7 @@ http://reprap.org/pipermail/reprap-dev/2011-May/003323.html
 #include <SPI.h>
 #endif
 
-#define VERSION_STRING  "1.1.0.10"
+#define VERSION_STRING  "1.1.0.11"
 
 //Stepper Movement Variables
 
@@ -140,7 +140,7 @@ static unsigned long max_inactive_time = 0;
 static unsigned long stepper_inactive_time = DEFAULT_STEPPER_DEACTIVE_TIME * 1000l;
 static unsigned long extruder_inactive_time = DEFAULT_EXTRUDER_DEACTIVE_TIME * 1000l;
 
-static unsigned long max_time_pushing = MAX_TIME_PUSHING*1000;
+static unsigned long max_time_pushing = MAX_TIME_PUSHING * 1000;
 
 unsigned long starttime=0;
 unsigned long stoptime=0;
@@ -951,7 +951,7 @@ void Reverse_20mm() {
 			fr_retract = FEEDRATE_EXTRUDE_RETRACT_PVA;
 		}
 		
-		Moving_E(-DISTANCE_EXTRUDE_RETRACT, FEEDRATE_EXTRUDE_RETRACT);
+		Moving_E(-DISTANCE_EXTRUDE_RETRACT, fr_retract);
 	}
 	
 	// second extruder
@@ -963,7 +963,7 @@ void Reverse_20mm() {
 			fr_retract = FEEDRATE_EXTRUDE_RETRACT_PVA;
 		}
 		
-		Moving_E(-DISTANCE_EXTRUDE_RETRACT, FEEDRATE_EXTRUDE_RETRACT);
+		Moving_E(-DISTANCE_EXTRUDE_RETRACT, fr_retract);
 	}
 	
 	active_extruder = original_extruder;
@@ -1420,7 +1420,7 @@ void Extrude_20mm_in_Resume(bool extrude_e0, bool extrude_e1) {
 void kill_Zim() {
 	SERIAL_PROTOCOL("\n Oh noooo, You kill the ZIM :-( \n");
 	quickStop();
-
+/* 
 	//TODO check if it's no meaning for this part 1 of LED control? - PNI
 	digitalWrite(Commande_Green, LOW);   // turn the LED on (LOW is the voltage level)
 	//  delay(1000); 
@@ -1436,7 +1436,7 @@ void kill_Zim() {
 	// digitalWrite(SUICIDE_Zim_PIN, HIGH);    // turn the LED off by making the voltage LOW
 	//delay(1000);
 	// part 1 of LED control end
-
+ */
 	//Write_RFID1();
 	//Write_RFID2();
 
@@ -1467,21 +1467,23 @@ void kill_Zim() {
 
 	// 2 blinks of LED
 	digitalWrite(Commande_Green, HIGH);   // turn the LED on (HIGH is the voltage level)
-	delay(100);               // wait for a second
+	delay(100);
 	digitalWrite(Commande_Green, LOW);    // turn the LED off by making the voltage LOW
 	delay(100);
 	digitalWrite(Commande_Green, HIGH);   // turn the LED on (HIGH is the voltage level)
-	delay(100);               // wait for a second
+	delay(100);
 	digitalWrite(Commande_Green, LOW);    // turn the LED off by making the voltage LOW
-	delay(100);               // wait for a second
+	delay(100);
 
-	cli(); // Stop interrupts
 	disable_x();
 	disable_y();
 	disable_z();
 	disable_e0();
 	disable_e1();
 	disable_e2();
+
+	delay(1000); // wait to shut down (client must release power button in this period)
+	cli(); // Stop interrupts
 
 	//if(PS_ON_PIN > -1) pinMode(PS_ON_PIN,INPUT);
 	SERIAL_ERROR_START;
@@ -4507,51 +4509,30 @@ void Function_Carre()
 
 }
 
-void Read_Power_Button()
-{ 
+void Read_Power_Button() { 
 	// read the value of the Kill_button
 #ifdef Power_Button
 	float voltage_value = VoltageButton();
-
-	if (voltage_value < 20) // import changes in SVN 55 by MCH
-	{
-		Read_button_1 = 0;	
-		Read_button_2 = 0;	
-	}	
-
-	if ((voltage_value>37)&&(Read_button_1>0))
-	{
-		Read_button_2 = millis();
-
-		delay(100);
-	}	
-
-	if ((voltage_value>37)&&(Read_button_1==0))
-	{
-		Read_button_1 = millis();
-
-		Read_button_2 = Read_button_1 + max_time_pushing - 2000;
-		delay(100);	
+	
+	if (voltage_value < 20) { // changed from 37 to 20 in SVN 55 by MCH
+		Read_button_1 = 0;
+		Read_button_2 = 0;
 	}
-
-	if( (Read_button_2 - Read_button_1) >  max_time_pushing ) 
-		//if( (Read_button_2-Read_button_1) >  4000 ) 
-	{
-		SERIAL_PROTOCOL("\n");
-		SERIAL_PROTOCOL("Je rentre");
-		SERIAL_PROTOCOL("\n"); 
-		Read_button_1 = 0;	
-		Read_button_2 = 0;	
-		//delay(1000);
-
-		//if(max_time_pushing) 
-		//{
-		// Interruption of programme
-		quickStop(); 
-
-		// Tuer la Zim!!
-		kill_Zim();  
-		//}
+	else if (voltage_value > 37) {
+		if (Read_button_1 > 0) {
+			Read_button_2 = millis();
+		}
+		else if (Read_button_1 == 0) {
+			Read_button_1 = millis();
+			Read_button_2 = Read_button_1;
+		}
+		
+		// verify pushing time
+		if((Read_button_2 - Read_button_1) > max_time_pushing) {
+			SERIAL_PROTOCOL("\nPower off\n");
+			quickStop();
+			kill_Zim();
+		}
 	}
 #endif
 }
