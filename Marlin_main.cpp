@@ -48,7 +48,7 @@ http://reprap.org/pipermail/reprap-dev/2011-May/003323.html
 #include <SPI.h>
 #endif
 
-#define VERSION_STRING  "1.1.0.11"
+#define VERSION_STRING  "1.1.0.12"
 
 //Stepper Movement Variables
 
@@ -3531,7 +3531,7 @@ void process_commands()
 				//					SERIAL_PROTOCOL("1");
 				//#else
 				if (Antenna_RFID_State== true)
-					SERIAL_PROTOCOL("1"); 
+					SERIAL_PROTOCOL("1");
 				else
 					SERIAL_PROTOCOL("0"); 
 				//#endif
@@ -3597,6 +3597,18 @@ void process_commands()
 
 				break;
 			}
+
+
+		case 1625:
+		{
+			if (RFID1_16_17_OK) {
+				SERIAL_PROTOCOL("1");
+			}
+			else {
+				SERIAL_PROTOCOL("-1");
+			}
+			break;
+		}
 
 		//====== extrude and retract filament ======
 
