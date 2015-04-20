@@ -48,7 +48,7 @@ http://reprap.org/pipermail/reprap-dev/2011-May/003323.html
 #include <SPI.h>
 #endif
 
-#define VERSION_STRING  "1.1.0.12"
+#define VERSION_STRING  "1.1.0.13"
 
 //Stepper Movement Variables
 
@@ -68,6 +68,16 @@ bool axis_relative_modes[] = AXIS_RELATIVE_MODES;
 int feedmultiply=100; //100->1 200->2
 int saved_feedmultiply;
 int extrudemultiply=100; //100->1 200->2
+//DIY add multi-extruder extrusion multiply support
+int extruder_multiply[EXTRUDERS] = {100
+  #if EXTRUDERS > 1
+    , 100
+    // #if EXTRUDERS > 2
+      // , 100
+    // #endif
+  #endif
+};
+//DIY end - PNI
 float current_position[NUM_AXIS] = { 0.0, 0.0, 0.0, 0.0 };
 float Pause_current_position[NUM_STOP_PARAMETERS ] = { 0.0, 0.0, 0.0, 0.0, 0.0 };
 float add_homeing[3]={0,0,0};
@@ -855,6 +865,13 @@ void Message_wait() {
 	SERIAL_PROTOCOL("wait\n");
 }
 
+void SetActiveExtruder(uint8_t new_extruder) {
+	active_extruder = new_extruder;
+	extrudemultiply = extruder_multiply[new_extruder];
+	
+	return;
+}
+
 void Moving_X(float distance_x, float feedrate_x) {
 	destination[X_AXIS] = distance_x + current_position[X_AXIS];
 	// destination[Y_AXIS] = current_position[Y_AXIS];
@@ -945,7 +962,7 @@ void Reverse_20mm() {
 	
 	// first extruder
 	if(Distance_Filament_E0 > 0) {
-		active_extruder = 0;
+		SetActiveExtruder(0);
 		
 		if (Is_PVA_E0 == true) {
 			fr_retract = FEEDRATE_EXTRUDE_RETRACT_PVA;
@@ -956,7 +973,7 @@ void Reverse_20mm() {
 	
 	// second extruder
 	if(Distance_Filament_E1 > 0) {
-		active_extruder = 1;
+		SetActiveExtruder(1);
 		fr_retract = FEEDRATE_EXTRUDE_RETRACT;
 		
 		if (Is_PVA_E1 == true) {
@@ -966,7 +983,7 @@ void Reverse_20mm() {
 		Moving_E(-DISTANCE_EXTRUDE_RETRACT, fr_retract);
 	}
 	
-	active_extruder = original_extruder;
+	SetActiveExtruder(original_extruder);
 	
 	return;
 }
@@ -1391,7 +1408,7 @@ void Extrude_20mm_in_Resume(bool extrude_e0, bool extrude_e1) {
 	
 	// first extruder
 	if (extrude_e0 == true) {
-		active_extruder = 0;
+		SetActiveExtruder(0);
 		
 		if (Is_PVA_E0 == true) {
 			fr_extrude = FEEDRATE_EXTRUDE_RETRACT_PVA;
@@ -1402,7 +1419,7 @@ void Extrude_20mm_in_Resume(bool extrude_e0, bool extrude_e1) {
 	
 	// second extruder
 	if (extrude_e1 == true) {
-		active_extruder = 1;
+		SetActiveExtruder(1);
 		fr_extrude = FEEDRATE_EXTRUDE_RETRACT;
 		
 		if (Is_PVA_E1 == true) {
@@ -1412,7 +1429,7 @@ void Extrude_20mm_in_Resume(bool extrude_e0, bool extrude_e1) {
 		Moving_E(DISTANCE_EXTRUDE_RETRACT, fr_extrude);
 	}
 	
-	active_extruder = original_extruder;
+	SetActiveExtruder(original_extruder);
 	
 	return;
 }
@@ -2356,6 +2373,7 @@ void process_commands()
 				if(code_seen('S')) 
 				{
 					extrudemultiply = code_value() ;
+					extruder_multiply[active_extruder] = extrudemultiply; //DIY add multi-extruder extrusion multiply support - PNI
 				}
 			}
 			break;
@@ -3101,10 +3119,10 @@ void process_commands()
 					Is_PVA_E0 = false;
 				}
 				
-				active_extruder = 0;
+				SetActiveExtruder(0);
+				extrudemultiply = 100; //DIY force loading extrusion multiply to 100% - PNI
 				allow_cold_extrudes(true);
 				// Commande_cartridge=true;
-				// relative_mode = true;
 				
 				// first move
 				Moving_E(DISTANCE_CRITICAL_LOADING, fr_critical);
@@ -3114,8 +3132,7 @@ void process_commands()
 				// reinitialization
 				Distance_Filament_E0 = 0;
 				
-				active_extruder = original_extruder;
-				// relative_mode = false;
+				SetActiveExtruder(original_extruder);
 				
 				break;
 			}
@@ -3135,10 +3152,10 @@ void process_commands()
 					Is_PVA_E1 = false;
 				}
 				
-				active_extruder = 1;
+				SetActiveExtruder(1);
+				extrudemultiply = 100; //DIY force loading extrusion multiply to 100% - PNI
 				allow_cold_extrudes(true);
 				// Commande_cartridge=true;
-				// relative_mode = true;
 				
 				// first move
 				Moving_E(DISTANCE_CRITICAL_LOADING, fr_critical);
@@ -3148,8 +3165,7 @@ void process_commands()
 				// reinitialization
 				Distance_Filament_E1 = 0;
 				
-				active_extruder = original_extruder;
-				relative_mode = false;
+				SetActiveExtruder(original_extruder);
 				
 				break;
 			}
@@ -3167,9 +3183,8 @@ void process_commands()
 					fr_p3 = UNLOADING_PART3_FEEDRATE_PVA;
 				}
 				
-				active_extruder = 0;
+				SetActiveExtruder(0);
 				allow_cold_extrudes(true);
-				// relative_mode = true;
 				unloading_command = true;
 				
 				// first move
@@ -3179,8 +3194,7 @@ void process_commands()
 				// third move
 				Moving_E(-UNLOADING_PART3_LENGTH, fr_p3);
 				
-				// relative_mode = false;
-				active_extruder = orignal_extruder;
+				SetActiveExtruder(orignal_extruder);
 				
 				break;
 			}
@@ -3198,9 +3212,8 @@ void process_commands()
 					fr_p3 = UNLOADING_PART3_FEEDRATE_PVA;
 				}
 				
-				active_extruder = 1;
+				SetActiveExtruder(1);
 				allow_cold_extrudes(true);
-				// relative_mode = true;
 				unloading_command = true;
 				
 				// first move
@@ -3210,8 +3223,7 @@ void process_commands()
 				// third move
 				Moving_E(-UNLOADING_PART3_LENGTH, fr_p3);
 				
-				// relative_mode = false;
-				active_extruder = orignal_extruder;
+				SetActiveExtruder(orignal_extruder);
 				
 				break;
 			}
@@ -3405,7 +3417,8 @@ void process_commands()
 					Is_PVA_E0 = false;
 				}
 				
-				active_extruder = 0;
+				SetActiveExtruder(0);
+				extrudemultiply = 100; //DIY force loading extrusion multiply to 100% - PNI
 				allow_cold_extrudes(true);
 				// Commande_cartridge=true;
 				// relative_mode = true;
@@ -3418,7 +3431,7 @@ void process_commands()
 					Moving_E(Distance_Load - DISTANCE_CRITICAL_LOADING, fr_default);
 				}
 				
-				active_extruder=original_extruder;
+				SetActiveExtruder(original_extruder);
 				// relative_mode = false;
 				
 				break;
@@ -3444,7 +3457,8 @@ void process_commands()
 					Is_PVA_E1 = false;
 				}
 				
-				active_extruder = 1;
+				SetActiveExtruder(1);
+				extrudemultiply = 100; //DIY force loading extrusion multiply to 100% - PNI
 				allow_cold_extrudes(true);
 				// Commande_cartridge=true;
 				// relative_mode = true;
@@ -3457,7 +3471,7 @@ void process_commands()
 					Moving_E(Distance_Load - DISTANCE_CRITICAL_LOADING, fr_default);
 				}
 				
-				active_extruder=original_extruder;
+				SetActiveExtruder(original_extruder);
 				// relative_mode = false;
 				
 				break;
@@ -3617,8 +3631,7 @@ void process_commands()
 				uint8_t original_extruder = active_extruder;
 				float fr_charge = FEEDRATE_EXTRUDE_RETRACT;
 				
-				active_extruder = 0;
-				// relative_mode = true;
+				SetActiveExtruder(0);
 				if(code_seen(CODE_PVA_IN_LOADING_UNLOADING)) {
 					fr_charge = FEEDRATE_EXTRUDE_RETRACT_PVA;
 					Is_PVA_E0 = true;
@@ -3629,8 +3642,7 @@ void process_commands()
 				
 				Moving_E(DISTANCE_EXTRUDE_RETRACT, fr_charge);
 				
-				active_extruder = original_extruder;
-				// relative_mode = false;
+				SetActiveExtruder(original_extruder);
 				
 				break;
 			}
@@ -3640,8 +3652,7 @@ void process_commands()
 				uint8_t original_extruder = active_extruder;
 				float fr_charge = FEEDRATE_EXTRUDE_RETRACT;
 				
-				active_extruder = 1;
-				// relative_mode = true;
+				SetActiveExtruder(1);
 				if(code_seen(CODE_PVA_IN_LOADING_UNLOADING)) {
 					fr_charge = FEEDRATE_EXTRUDE_RETRACT_PVA;
 					Is_PVA_E1 = true;
@@ -3652,8 +3663,7 @@ void process_commands()
 				
 				Moving_E(DISTANCE_EXTRUDE_RETRACT, fr_charge);
 				
-				active_extruder = original_extruder;
-				// relative_mode = false;
+				SetActiveExtruder(original_extruder);
 				
 				break;
 			}
@@ -3663,16 +3673,14 @@ void process_commands()
 				uint8_t original_extruder = active_extruder;
 				float fr_retract = FEEDRATE_EXTRUDE_RETRACT;
 				
-				active_extruder = 0;
-				// relative_mode = true;
+				SetActiveExtruder(0);
 				if(code_seen(CODE_PVA_IN_LOADING_UNLOADING)) {
 					fr_retract = FEEDRATE_EXTRUDE_RETRACT_PVA;
 				}
 				
 				Moving_E(-DISTANCE_EXTRUDE_RETRACT, fr_retract);
 				
-				active_extruder = original_extruder;
-				// relative_mode = false;
+				SetActiveExtruder(original_extruder);
 				
 				break;
 			}
@@ -3682,16 +3690,14 @@ void process_commands()
 				uint8_t original_extruder = active_extruder;
 				float fr_retract = FEEDRATE_EXTRUDE_RETRACT;
 				
-				active_extruder = 1;
-				// relative_mode = true;
+				SetActiveExtruder(1);
 				if(code_seen(CODE_PVA_IN_LOADING_UNLOADING)) {
 					fr_retract = FEEDRATE_EXTRUDE_RETRACT_PVA;
 				}
 				
 				Moving_E(-DISTANCE_EXTRUDE_RETRACT, fr_retract);
 				
-				active_extruder = original_extruder;
-				// relative_mode = false;
+				SetActiveExtruder(original_extruder);
 				
 				break;
 			}
@@ -3831,62 +3837,26 @@ void process_commands()
 				break;	
 			}	
 
-/* 
-		case 1702: 
-			{// Serial2 read cartridge
 
-				////Activer l'antenne///
-				if (Antenna_RFID_State== false)
-				{						
-					//envoie_commande(Set_Antenna_Status_ON,length_Set_Antenna_Status_ON,2); 						
-					Antenna_RFID_State= true;
-				}		
-				//// fin de l'activation///////////	
-
-				// Ultralight
-
-				//envoie_commande(Initialize_Port,length_Initialize_Port,2);	
-				//envoie_commande(Set_Led_Color_ON,length_Set_Led_Color_ON,2); 
-				//envoie_commande(Mifare_Request,length_Mifare_Request,2); 		
-				//envoie_commande(Mifare_Anticollision,length_Mifare_Anticollision,2); 
-				//envoie_commande(Mifare_Select,length_Mifare_Select,2); 
-				//envoie_commande(Mifare_Authentication24,length_Mifare_Authentication24,2); 
-				envoie_commande(Mifare_Read1,length_Mifare_Read1,2); 
-				SERIAL_PROTOCOL("\n"); 
-
-
-
+		case 1663:
+			{//DIY add multi-extruder extrusion multiply support
+				if (code_seen('R')) {
+					extruder_multiply[0] = code_value();
+					SERIAL_PROTOCOL("R: ");
+					SERIAL_PROTOCOLLN(extruder_multiply[0]);
+				}
+#if EXTRUDERS > 1
+				if (code_seen('L')) {
+					extruder_multiply[1] = code_value();
+					SERIAL_PROTOCOL("L: ");
+					SERIAL_PROTOCOLLN(extruder_multiply[1]);
+				}
+#endif
+				extrudemultiply = extruder_multiply[active_extruder];
+				
 				break;
-			}	
-		case 1703: 
-			{// Serial3 read cartridge 
+			}//DIY end - PNI
 
-				////Activer l'antenne///
-				if (Antenna_RFID_State== false)
-				{						
-					//envoie_commande(Set_Antenna_Status_ON,length_Set_Antenna_Status_ON,3); 						
-					Antenna_RFID_State= true;
-				}		
-				//// fin de l'activation///////////	
-
-
-				// Ultralight
-
-				//envoie_commande(Initialize_Port,length_Initialize_Port,3);	
-				//envoie_commande(Set_Led_Color_ON,length_Set_Led_Color_ON,3); 
-				//envoie_commande(Mifare_Request,length_Mifare_Request,3); 		
-				//envoie_commande(Mifare_Anticollision,length_Mifare_Anticollision,3); 
-				//envoie_commande(Mifare_Select,length_Mifare_Select,3); 
-				//envoie_commande(Mifare_Authentication24,length_Mifare_Authentication24,2); 
-				envoie_commande(Mifare_Read1,length_Mifare_Read1,3);
-				SERIAL_PROTOCOL("\n");
-
-
-
-
-				break;
-			}
- */
 
 		case 1900: 
 			{// Interruption of programme
@@ -4071,21 +4041,21 @@ void process_commands()
 				break;
 			}
 
-		case 2000: 
+		case 2000:
 			{// Begin printing
 				Has_Paused_in_Print = false;
 				Reinitialize_E0_E1_Quantity(false);
 				// If only one extruder is needed
 				Set_temperature_to_0Degree();
 				// reset extruder to avoid wrong temperature assignment in mono-color model - PNI
-				active_extruder = 0;
+				SetActiveExtruder(0);
 				disable_x();
 				disable_y();
 				disable_z();
 				disable_e0();
 				disable_e1();
 				disable_e2();
-
+				
 				break;
 			}
 		case 2001: 
@@ -4216,6 +4186,9 @@ void process_commands()
 						extruder_offset[i][active_extruder] +
 						extruder_offset[i][tmp_extruder];
 				}
+				
+				extrudemultiply = extruder_multiply[tmp_extruder]; //DIY add multi-extruder extrusion multiply support - PNI
+				
 				// Set the new active extruder and position
 				active_extruder = tmp_extruder;
 				plan_set_position(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS]);

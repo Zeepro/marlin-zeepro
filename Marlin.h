@@ -265,6 +265,7 @@ extern float homing_feedrate[];
 extern bool axis_relative_modes[];
 extern int feedmultiply;
 extern int extrudemultiply; // Sets extrude multiply factor (in percent)
+extern int extruder_multiply[EXTRUDERS]; // sets extrude multiply factor (in percent) for each extruder individually
 extern float current_position[NUM_AXIS] ;
 extern float Pause_current_position[NUM_STOP_PARAMETERS] ;
 extern float add_homeing[3];
