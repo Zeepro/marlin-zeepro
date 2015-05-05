@@ -48,7 +48,7 @@ http://reprap.org/pipermail/reprap-dev/2011-May/003323.html
 #include <SPI.h>
 #endif
 
-#define VERSION_STRING  "1.1.0.13"
+#define VERSION_STRING  "1.1.0.14"
 
 //Stepper Movement Variables
 
@@ -3109,6 +3109,7 @@ void process_commands()
 				uint8_t original_extruder = active_extruder;
 				float fr_critical = FEEDRATE_CRITICAL_LOADING;
 				float fr_default = FEEDRATE_LOADING;
+				float dstc_second = DISTANCE_LOADING_RIGHT;
 				
 				if (code_seen(CODE_PVA_IN_LOADING_UNLOADING)) {
 					fr_critical = FEEDRATE_CRITICAL_LOADING_PVA;
@@ -3117,6 +3118,9 @@ void process_commands()
 				}
 				else {
 					Is_PVA_E0 = false;
+				}
+				if (!RFID1_16_17_OK) {
+					dstc_second = DISTANCE_LOADING_LEFT;
 				}
 				
 				SetActiveExtruder(0);
@@ -3127,7 +3131,7 @@ void process_commands()
 				// first move
 				Moving_E(DISTANCE_CRITICAL_LOADING, fr_critical);
 				// second move
-				Moving_E(DISTANCE_LOADING_RIGHT, fr_default);
+				Moving_E(dstc_second, fr_default);
 				
 				// reinitialization
 				Distance_Filament_E0 = 0;
@@ -3176,11 +3180,15 @@ void process_commands()
 				float fr_p1 = UNLOADING_PART1_FEEDRATE;
 				float fr_p2 = UNLOADING_PART2_FEEDRATE;
 				float fr_p3 = UNLOADING_PART3_FEEDRATE;
+				float dstc_p2 = UNLOADING_PART2_LENGTH_RIGHT;
 				
 				if (code_seen(CODE_PVA_IN_LOADING_UNLOADING)) {
 					fr_p1 = UNLOADING_PART1_FEEDRATE_PVA;
 					fr_p2 = UNLOADING_PART2_FEEDRATE_PVA;
 					fr_p3 = UNLOADING_PART3_FEEDRATE_PVA;
+				}
+				if (!RFID1_16_17_OK) {
+					dstc_p2 = UNLOADING_PART2_LENGTH_LEFT;
 				}
 				
 				SetActiveExtruder(0);
@@ -3190,7 +3198,7 @@ void process_commands()
 				// first move
 				Moving_E(-UNLOADING_PART1_LENGTH, fr_p1);
 				// second move
-				Moving_E(-UNLOADING_PART2_LENGTH_RIGHT, fr_p2);
+				Moving_E(-dstc_p2, fr_p2);
 				// third move
 				Moving_E(-UNLOADING_PART3_LENGTH, fr_p3);
 				
