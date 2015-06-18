@@ -48,7 +48,7 @@ http://reprap.org/pipermail/reprap-dev/2011-May/003323.html
 #include <SPI.h>
 #endif
 
-#define VERSION_STRING  "1.1.0.14"
+#define VERSION_STRING  "1.1.0.15"
 
 //Stepper Movement Variables
 
@@ -79,7 +79,7 @@ int extruder_multiply[EXTRUDERS] = {100
 };
 //DIY end - PNI
 float current_position[NUM_AXIS] = { 0.0, 0.0, 0.0, 0.0 };
-float Pause_current_position[NUM_STOP_PARAMETERS ] = { 0.0, 0.0, 0.0, 0.0, 0.0 };
+float Pause_current_position[NUM_STOP_PARAMETERS] = { 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 };
 float add_homeing[3]={0,0,0};
 float min_pos[3] = { X_MIN_POS, Y_MIN_POS, Z_MIN_POS };
 float max_pos[3] = { X_MAX_POS, Y_MAX_POS, Z_MAX_POS };
@@ -1306,6 +1306,7 @@ void Set_temperature_to_0Degree() {
 	
 	setTargetHotend(Temprature_shutdown, 1);
 	setTargetHotend(Temprature_shutdown, 0);
+	setTargetBed(Temprature_shutdown);
 	
 	// reset target temperature (by PNI on 20140708)
 	TMP0_Target = 0;
@@ -1320,6 +1321,7 @@ void Saving_current_parameters() {
 	Pause_current_position[Z_parm]=current_position[Z_AXIS];
 	Pause_current_position[T0_parm]=TMP0_Target;
 	Pause_current_position[T1_parm]=TMP1_Target;
+	Pause_current_position[Bed_parm] = target_temperature_bed;
 	
 	return;
 }
@@ -2967,12 +2969,12 @@ void process_commands()
 		case 1402: //affichage de la temperture des deux connexions
 			{
 
-				numero_extruder=0;
 				SERIAL_PROTOCOL("TEMP 1:");
-				SERIAL_PROTOCOL_F(degHotend(numero_extruder),1);  
-				numero_extruder=1;
+				SERIAL_PROTOCOL_F(degHotend(0),1);
 				SERIAL_PROTOCOL(" - TEMP 2:");
-				SERIAL_PROTOCOL_F(degHotend(numero_extruder),1); 
+				SERIAL_PROTOCOL_F(degHotend(1),1);
+				SERIAL_PROTOCOL(" - TEMP B:");
+				SERIAL_PROTOCOL_F(degBed(),1); 
 
 
 
@@ -3632,6 +3634,13 @@ void process_commands()
 			break;
 		}
 
+
+		case 1626:
+		{
+			SERIAL_PROTOCOL_F(degBed(),1); 
+			break;
+		}
+
 		//====== extrude and retract filament ======
 
 		case 1650: 
@@ -3973,7 +3982,9 @@ void process_commands()
 					setTargetHotend(Pause_current_position[T1_parm], 1);
 					TMP1_Target = Pause_current_position[T1_parm];
 				}
-				
+				if (Pause_current_position[Bed_parm] > 0) {
+					setTargetBed(Pause_current_position[Bed_parm]);
+				}
 				// Set_current_paramters();
 				
 				// resume head first

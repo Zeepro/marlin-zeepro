@@ -233,7 +233,7 @@ void Function_Carre ();
 
 enum AxisEnum {X_AXIS=0, Y_AXIS=1, Z_AXIS=2, E_AXIS=3};
 	
-enum Stop_Parameters_Enum {X_parm=0, Y_parm=1, Z_parm=2, T0_parm=3, T1_parm=4};
+enum Stop_Parameters_Enum {X_parm=0, Y_parm=1, Z_parm=2, T0_parm=3, T1_parm=4, Bed_parm=5};
 
 
 void FlushSerialRequestResend();

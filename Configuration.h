@@ -91,7 +91,7 @@
 #define TEMP_SENSOR_0 77
 #define TEMP_SENSOR_1 77
 #define TEMP_SENSOR_2 77
-#define TEMP_SENSOR_BED 77
+#define TEMP_SENSOR_BED 7
 
 // Actual temperature must be close to target for this long before M109 returns success
 #define TEMP_RESIDENCY_TIME 10	// (seconds)
@@ -403,7 +403,7 @@
 
 //// MOVEMENT SETTINGS
 #define NUM_AXIS 4 // The axis order in all axis related arrays is X, Y, Z, E
-#define NUM_STOP_PARAMETERS 5 // The axis order in all axis related arrays is X, Y, Z, T0, T1
+#define NUM_STOP_PARAMETERS 6 // The axis order in all axis related arrays is X, Y, Z, T0, T1, Bed
 #define HOMING_FEEDRATE {1500, 1500, 500, 0}  // set the homing speeds (mm/min)
 	
 
